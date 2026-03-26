@@ -9,18 +9,23 @@ export default async function AppPage() {
     redirect('/login')
   }
 
-  const { data } = await supabase
+  const { data: membership } = await supabase
     .from('business_users')
-    .select('businesses(slug)')
+    .select('business_id')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle()
 
-  const biz = data?.businesses
-  const slug = Array.isArray(biz) ? biz[0]?.slug : (biz as unknown as { slug: string } | null)?.slug
+  if (membership?.business_id) {
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('slug')
+      .eq('id', membership.business_id)
+      .maybeSingle()
 
-  if (slug) {
-    redirect(`/app/${slug}`)
+    if (biz?.slug) {
+      redirect(`/app/${biz.slug}`)
+    }
   }
 
   redirect('/onboarding')
