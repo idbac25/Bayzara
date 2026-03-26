@@ -44,11 +44,10 @@ export default function LoginPage() {
           .eq('user_id', user.id)
           .limit(1)
 
-        const slug = bizUsers?.[0]?.businesses
-        if (slug && !Array.isArray(slug) && 'slug' in slug) {
-          router.push(`/app/${slug.slug}`)
-        } else if (Array.isArray(slug) && slug[0]?.slug) {
-          router.push(`/app/${slug[0].slug}`)
+        const biz = bizUsers?.[0]?.businesses
+        const bizSlug = Array.isArray(biz) ? biz[0]?.slug : (biz as { slug: string } | null)?.slug
+        if (bizSlug) {
+          router.push(`/app/${bizSlug}`)
         } else {
           router.push('/onboarding')
         }
