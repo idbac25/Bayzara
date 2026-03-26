@@ -29,7 +29,7 @@ interface DashboardClientProps {
     total: number
     amount_due: number
     status: string
-    clients: { name: string } | null
+    clients: Array<{ name: string }> | null
   }>
   evcConnections: Array<{
     id: string
@@ -210,7 +210,7 @@ export function DashboardClient({ user, business, stats, recentInvoices, evcConn
                       <div className="flex items-center gap-3 min-w-0">
                         <div>
                           <p className="text-sm font-medium">{inv.document_number}</p>
-                          <p className="text-xs text-muted-foreground truncate">{inv.clients?.name ?? 'No client'}</p>
+                          <p className="text-xs text-muted-foreground truncate">{(Array.isArray(inv.clients) ? inv.clients[0]?.name : null) ?? 'No client'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">

@@ -37,7 +37,7 @@ interface InvoiceRow {
   is_recurring: boolean
   deleted_at: string | null
   created_at: string
-  clients: { id: string; name: string } | null
+  clients: Array<{ id: string; name: string }> | null
 }
 
 interface InvoicesClientProps {
@@ -147,8 +147,9 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
       accessorKey: 'clients',
       header: 'Client',
       cell: ({ getValue }) => {
-        const c = getValue() as { name: string } | null
-        return <span className="text-sm">{c?.name ?? <span className="text-muted-foreground">—</span>}</span>
+        const c = getValue() as Array<{ name: string }> | null
+        const name = Array.isArray(c) ? c[0]?.name : null
+        return <span className="text-sm">{name ?? <span className="text-muted-foreground">—</span>}</span>
       },
     },
     {

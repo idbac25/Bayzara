@@ -42,12 +42,14 @@ export default async function AppLayout({ children, params }: Props) {
     .eq('user_id', user.id)
 
   const businesses = (allBizUsers ?? [])
-    .map(bu => bu.businesses)
+    .flatMap(bu => (Array.isArray(bu.businesses) ? bu.businesses : bu.businesses ? [bu.businesses] : []))
     .filter(Boolean) as Array<{ slug: string; name: string; logo_url?: string; plan: string }>
+
+  const bizData = Array.isArray(bizUser.businesses) ? bizUser.businesses[0] : bizUser.businesses
 
   return (
     <AppShell
-      business={bizUser.businesses as Parameters<typeof AppShell>[0]['business']}
+      business={bizData as unknown as Parameters<typeof AppShell>[0]['business']}
       userRole={bizUser.role as Parameters<typeof AppShell>[0]['userRole']}
       user={user}
       businesses={businesses}

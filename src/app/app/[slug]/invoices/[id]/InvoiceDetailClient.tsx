@@ -18,13 +18,68 @@ import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Pencil, Download, Copy, CreditCard, Loader2, CheckCircle } from 'lucide-react'
 
+interface DocRecord {
+  id: string
+  document_number: string
+  type: string
+  date: string
+  due_date?: string | null
+  status: string
+  currency: string
+  subtotal: number
+  discount_amount: number
+  tax_amount: number
+  additional_charges: number
+  additional_charges_label?: string | null
+  total: number
+  amount_paid: number
+  amount_due: number
+  notes?: string | null
+  terms?: string | null
+  client_id?: string | null
+  business_id: string
+  public_token: string
+}
+
+interface LineItemRecord {
+  id: string
+  name: string
+  description?: string | null
+  quantity: number
+  rate: number
+  amount: number
+}
+
+interface ClientRecord {
+  name: string
+  email?: string | null
+  phone?: string | null
+  address_line1?: string | null
+}
+
+interface PaymentRecord {
+  id: string
+  amount: number
+  date: string
+  payment_method: string
+  auto_recorded?: boolean
+}
+
+interface BusinessRecord {
+  name: string
+  address_line1?: string | null
+  city?: string | null
+  phone?: string | null
+  logo_url?: string | null
+}
+
 interface Props {
-  document: Record<string, unknown>
-  lineItems: Array<Record<string, unknown>>
-  client: Record<string, unknown> | null
-  payments: Array<Record<string, unknown>>
+  document: DocRecord
+  lineItems: LineItemRecord[]
+  client: ClientRecord | null
+  payments: PaymentRecord[]
   paymentAccounts: Array<{ id: string; name: string; type: string }>
-  business: Record<string, unknown>
+  business: BusinessRecord
   slug: string
 }
 
@@ -39,7 +94,7 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
   const [paymentNotes, setPaymentNotes] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const currency = doc.currency as string
+  const currency = doc.currency
 
   const recordPayment = async () => {
     setSaving(true)
@@ -60,8 +115,8 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
     if (error) { toast.error(error.message); setSaving(false); return }
 
     // Update document payment status
-    const newPaid = (doc.amount_paid as number) + amount
-    const newDue = (doc.total as number) - newPaid
+    const newPaid = (doc.amount_paid) + amount
+    const newDue = (doc.total) - newPaid
     const newStatus = newDue <= 0 ? 'paid' : newPaid > 0 ? 'partially_paid' : doc.status
 
     await supabase
@@ -75,7 +130,7 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
     router.refresh()
   }
 
-  const typeLabel = (doc.type as string).replace(/_/g, ' ')
+  const typeLabel = (doc.type).replace(/_/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase())
 
   return (
@@ -83,13 +138,13 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
       <PageHeader
         title={`${typeLabel} ${doc.document_number}`}
         breadcrumbs={[
-          { label: business.name as string, href: `/app/${slug}` },
+          { label: business.name, href: `/app/${slug}` },
           { label: 'Invoices', href: `/app/${slug}/invoices` },
           { label: String(doc.document_number) },
         ]}
         action={
           <div className="flex items-center gap-2">
-            <StatusBadge status={doc.status as string} />
+            <StatusBadge status={doc.status} />
             <Button asChild variant="outline" size="sm">
               <Link href={`/app/${slug}/invoices/${doc.id}/edit`}>
                 <Pencil className="mr-2 h-4 w-4" />Edit
@@ -135,24 +190,24 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
                     style={{ background: 'linear-gradient(135deg, #0F4C81, #1a6db5)' }}>
                     <span className="text-white font-bold">B</span>
                   </div>
-                  <h2 className="font-bold">{business.name as string}</h2>
-                  {business.address_line1 && <p className="text-sm text-muted-foreground">{business.address_line1 as string}</p>}
-                  {business.city && <p className="text-sm text-muted-foreground">{business.city as string}</p>}
+                  <h2 className="font-bold">{business.name}</h2>
+                  {business.address_line1 && <p className="text-sm text-muted-foreground">{business.address_line1}</p>}
+                  {business.city && <p className="text-sm text-muted-foreground">{business.city}</p>}
                 </div>
                 <div className="text-right">
                   <h1 className="text-3xl font-bold text-[#0F4C81] mb-1">{typeLabel.toUpperCase()}</h1>
                   <p className="text-muted-foreground">#{doc.document_number}</p>
-                  <p className="text-sm">Date: {formatDate(doc.date as string)}</p>
-                  {doc.due_date && <p className="text-sm">Due: {formatDate(doc.due_date as string)}</p>}
+                  <p className="text-sm">Date: {formatDate(doc.date)}</p>
+                  {doc.due_date && <p className="text-sm">Due: {formatDate(doc.due_date)}</p>}
                 </div>
               </div>
 
               {client && (
                 <div className="mb-6">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Bill To</p>
-                  <p className="font-semibold">{client.name as string}</p>
-                  {client.email && <p className="text-sm text-muted-foreground">{client.email as string}</p>}
-                  {client.phone && <p className="text-sm text-muted-foreground">{client.phone as string}</p>}
+                  <p className="font-semibold">{client.name}</p>
+                  {client.email && <p className="text-sm text-muted-foreground">{client.email}</p>}
+                  {client.phone && <p className="text-sm text-muted-foreground">{client.phone}</p>}
                 </div>
               )}
 
@@ -168,14 +223,14 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
                 </thead>
                 <tbody>
                   {lineItems.map(li => (
-                    <tr key={li.id as string} className="border-b border-gray-100">
+                    <tr key={li.id} className="border-b border-gray-100">
                       <td className="py-2">
-                        <p className="font-medium">{li.name as string}</p>
-                        {li.description && <p className="text-xs text-muted-foreground">{li.description as string}</p>}
+                        <p className="font-medium">{li.name}</p>
+                        {li.description && <p className="text-xs text-muted-foreground">{li.description}</p>}
                       </td>
-                      <td className="py-2 text-right">{li.quantity as number}</td>
-                      <td className="py-2 text-right">{formatCurrency(li.rate as number, currency)}</td>
-                      <td className="py-2 text-right font-medium">{formatCurrency(li.amount as number, currency)}</td>
+                      <td className="py-2 text-right">{li.quantity}</td>
+                      <td className="py-2 text-right">{formatCurrency(li.rate, currency)}</td>
+                      <td className="py-2 text-right font-medium">{formatCurrency(li.amount, currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -186,40 +241,40 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
                 <div className="w-56 space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(doc.subtotal as number, currency)}</span>
+                    <span>{formatCurrency(doc.subtotal, currency)}</span>
                   </div>
-                  {(doc.discount_amount as number) > 0 && (
+                  {(doc.discount_amount) > 0 && (
                     <div className="flex justify-between text-[#27AE60]">
                       <span>Discount</span>
-                      <span>-{formatCurrency(doc.discount_amount as number, currency)}</span>
+                      <span>-{formatCurrency(doc.discount_amount, currency)}</span>
                     </div>
                   )}
-                  {(doc.tax_amount as number) > 0 && (
+                  {(doc.tax_amount) > 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Tax</span>
-                      <span>{formatCurrency(doc.tax_amount as number, currency)}</span>
+                      <span>{formatCurrency(doc.tax_amount, currency)}</span>
                     </div>
                   )}
-                  {(doc.additional_charges as number) > 0 && (
+                  {(doc.additional_charges) > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{doc.additional_charges_label as string}</span>
-                      <span>{formatCurrency(doc.additional_charges as number, currency)}</span>
+                      <span className="text-muted-foreground">{doc.additional_charges_label}</span>
+                      <span>{formatCurrency(doc.additional_charges, currency)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-base pt-2 border-t-2 border-[#0F4C81]">
                     <span>Total</span>
-                    <span className="text-[#0F4C81]">{formatCurrency(doc.total as number, currency)}</span>
+                    <span className="text-[#0F4C81]">{formatCurrency(doc.total, currency)}</span>
                   </div>
-                  {(doc.amount_paid as number) > 0 && (
+                  {(doc.amount_paid) > 0 && (
                     <>
                       <div className="flex justify-between text-[#27AE60]">
                         <span>Amount Paid</span>
-                        <span>-{formatCurrency(doc.amount_paid as number, currency)}</span>
+                        <span>-{formatCurrency(doc.amount_paid, currency)}</span>
                       </div>
                       <div className="flex justify-between font-bold">
                         <span>Balance Due</span>
-                        <span className={(doc.amount_due as number) > 0 ? 'text-[#E74C3C]' : 'text-[#27AE60]'}>
-                          {formatCurrency(doc.amount_due as number, currency)}
+                        <span className={(doc.amount_due) > 0 ? 'text-[#E74C3C]' : 'text-[#27AE60]'}>
+                          {formatCurrency(doc.amount_due, currency)}
                         </span>
                       </div>
                     </>
@@ -230,13 +285,13 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
               {doc.notes && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Notes</p>
-                  <p className="text-sm">{doc.notes as string}</p>
+                  <p className="text-sm">{doc.notes}</p>
                 </div>
               )}
               {doc.terms && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Terms</p>
-                  <p className="text-sm text-muted-foreground">{doc.terms as string}</p>
+                  <p className="text-sm text-muted-foreground">{doc.terms}</p>
                 </div>
               )}
             </CardContent>
@@ -255,17 +310,17 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Invoice Total</span>
-                <span className="font-medium">{formatCurrency(doc.total as number, currency)}</span>
+                <span className="font-medium">{formatCurrency(doc.total, currency)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Amount Paid</span>
-                <span className="font-medium text-[#27AE60]">{formatCurrency(doc.amount_paid as number, currency)}</span>
+                <span className="font-medium text-[#27AE60]">{formatCurrency(doc.amount_paid, currency)}</span>
               </div>
               <Separator />
               <div className="flex justify-between font-bold">
                 <span>Balance Due</span>
-                <span className={(doc.amount_due as number) > 0 ? 'text-[#E74C3C]' : 'text-[#27AE60]'}>
-                  {formatCurrency(doc.amount_due as number, currency)}
+                <span className={(doc.amount_due) > 0 ? 'text-[#E74C3C]' : 'text-[#27AE60]'}>
+                  {formatCurrency(doc.amount_due, currency)}
                 </span>
               </div>
               {doc.status !== 'paid' && (
@@ -290,17 +345,17 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
               </CardHeader>
               <CardContent className="space-y-3">
                 {payments.map(p => (
-                  <div key={p.id as string} className="flex items-start justify-between text-sm">
+                  <div key={p.id} className="flex items-start justify-between text-sm">
                     <div>
                       <div className="flex items-center gap-1.5">
                         <CheckCircle className="h-3.5 w-3.5 text-[#27AE60]" />
-                        <span className="font-medium">{formatCurrency(p.amount as number, currency)}</span>
+                        <span className="font-medium">{formatCurrency(p.amount, currency)}</span>
                         {p.auto_recorded && (
                           <Badge className="text-[10px] bg-[#F5A623]/20 text-[#F5A623] border-0 py-0">EVC</Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{formatDate(p.date as string)}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{(p.payment_method as string).replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{(p.payment_method).replace(/_/g, ' ')}</p>
                     </div>
                   </div>
                 ))}

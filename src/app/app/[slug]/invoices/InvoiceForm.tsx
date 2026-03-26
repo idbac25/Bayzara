@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBusiness } from '@/contexts/BusinessContext'
@@ -18,7 +18,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
-import { Plus, Trash2, ChevronDown, Check, Save, Eye, Loader2, Copy } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, Check, Save, Eye, Loader2, Copy, Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import Link from 'next/link'
 
