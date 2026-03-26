@@ -33,20 +33,6 @@ const COUNTRIES = [
   { value: 'US', label: 'United States' },
 ]
 
-const DEFAULT_STAGES = [
-  { id: 'open', name: 'Open', order: 0, color: '#3B82F6' },
-  { id: 'contacted', name: 'Contacted', order: 1, color: '#8B5CF6' },
-  { id: 'proposal_sent', name: 'Proposal Sent', order: 2, color: '#F59E0B' },
-  { id: 'deal_done', name: 'Deal Done', order: 3, color: '#10B981' },
-  { id: 'lost', name: 'Lost', order: 4, color: '#EF4444' },
-  { id: 'not_serviceable', name: 'Not Serviceable', order: 5, color: '#6B7280' },
-]
-
-const DOCUMENT_TYPES = [
-  'invoice', 'quotation', 'proforma_invoice', 'sales_order',
-  'delivery_challan', 'credit_note', 'payment_receipt',
-  'purchase', 'expense', 'purchase_order', 'payout_receipt', 'debit_note'
-]
 
 const step1Schema = z.object({
   name: z.string().min(2, 'Business name must be at least 2 characters'),
@@ -147,53 +133,28 @@ export default function OnboardingPage() {
       }
     }
 
-    // Create business
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .insert({
+    // Create business via server API (bypasses RLS for business_users insert)
+    const res = await fetch('/api/business/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         slug: businessData.slug,
         name: businessData.name,
         logo_url: logoUrl,
         country: businessData.country,
         currency: businessData.currency,
         timezone: businessData.timezone,
-        owner_id: user.id,
-      })
-      .select()
-      .single()
+      }),
+    })
 
-    if (bizError || !business) {
-      setError(bizError?.message ?? 'Failed to create business')
+    const result = await res.json()
+    if (!res.ok) {
+      setError(result.error ?? 'Failed to create business')
       setLoading(false)
       return
     }
 
-    // Add owner as super_admin
-    await supabase.from('business_users').insert({
-      business_id: business.id,
-      user_id: user.id,
-      role: 'super_admin',
-      accepted_at: new Date().toISOString(),
-    })
-
-    // Create default pipeline
-    await supabase.from('pipelines').insert({
-      business_id: business.id,
-      name: 'Sales Pipeline',
-      stages: DEFAULT_STAGES,
-      is_default: true,
-    })
-
-    // Create document sequences for all types
-    const sequences = DOCUMENT_TYPES.map(type => ({
-      business_id: business.id,
-      document_type: type,
-      prefix: '',
-      current_number: 0,
-    }))
-    await supabase.from('document_sequences').insert(sequences)
-
-    router.push(`/app/${business.slug}`)
+    router.push(`/app/${result.slug}`)
     router.refresh()
   }
 

@@ -14,10 +14,13 @@ export default async function AppPage() {
     .select('businesses(slug)')
     .eq('user_id', user.id)
     .limit(1)
-    .single()
+    .maybeSingle()
 
-  if (data?.businesses && 'slug' in data.businesses) {
-    redirect(`/app/${data.businesses.slug}`)
+  const biz = data?.businesses
+  const slug = Array.isArray(biz) ? biz[0]?.slug : (biz as { slug: string } | null)?.slug
+
+  if (slug) {
+    redirect(`/app/${slug}`)
   }
 
   redirect('/onboarding')
