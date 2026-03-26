@@ -17,7 +17,7 @@ export default async function AppPage() {
     .maybeSingle()
 
   const biz = data?.businesses
-  const slug = Array.isArray(biz) ? biz[0]?.slug : (biz as { slug: string } | null)?.slug
+  const slug = Array.isArray(biz) ? biz[0]?.slug : (biz as unknown as { slug: string } | null)?.slug
 
   if (slug) {
     redirect(`/app/${slug}`)
