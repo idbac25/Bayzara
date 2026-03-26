@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
     business_id: business.id,
     user_id: user.id,
     role: 'super_admin',
-    accepted_at: new Date().toISOString(),
   })
 
   // Create default pipeline
