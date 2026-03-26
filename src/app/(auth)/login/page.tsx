@@ -45,7 +45,7 @@ export default function LoginPage() {
           .limit(1)
 
         const biz = bizUsers?.[0]?.businesses
-        const bizSlug = Array.isArray(biz) ? biz[0]?.slug : (biz as { slug: string } | null)?.slug
+        const bizSlug = Array.isArray(biz) ? biz[0]?.slug : (biz as unknown as { slug: string } | null)?.slug
         if (bizSlug) {
           router.push(`/app/${bizSlug}`)
         } else {
