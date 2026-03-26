@@ -1,65 +1,106 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Zap, Receipt, Users, BarChart3, CheckCircle } from 'lucide-react'
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Nav */}
+      <nav className="flex items-center justify-between px-6 py-4 bg-white border-b">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0F4C81, #1a6db5)' }}>
+            <span className="text-white font-bold">B</span>
+          </div>
+          <span className="font-bold text-[#0F4C81] text-lg">Bayzara</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button asChild variant="ghost">
+            <Link href="/login">Sign in</Link>
+          </Button>
+          <Button asChild className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
+            <Link href="/signup">Get Started Free</Link>
+          </Button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="text-center px-6 py-20 max-w-4xl mx-auto">
+        <div className="inline-flex items-center gap-2 bg-[#F5A623]/10 text-[#F5A623] px-4 py-1.5 rounded-full text-sm font-semibold mb-6 border border-[#F5A623]/20">
+          <Zap className="h-4 w-4" />
+          World&apos;s first native Hormud EVC Plus integration
+        </div>
+        <h1 className="text-5xl font-bold text-[#0F4C81] leading-tight mb-6">
+          Business clarity<br />for Somalia
+        </h1>
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          The only accounting platform where EVC Plus payments are automatically recorded the moment they arrive.
+          No manual entry. No reconciliation. Just clarity.
+        </p>
+        <div className="flex items-center justify-center gap-4">
+          <Button asChild size="lg" className="bg-[#0F4C81] hover:bg-[#0d3f6e] px-8">
+            <Link href="/signup">Start for free</Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/login">Sign in</Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="px-6 py-16 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { icon: Zap, color: '#F5A623', title: 'EVC Auto-Record', desc: 'Every Hormud payment recorded automatically with sender name resolved in real time.' },
+            { icon: Receipt, color: '#0F4C81', title: 'Professional Invoices', desc: 'Create, send, and track invoices. Share via link or PDF with a single click.' },
+            { icon: Users, color: '#27AE60', title: 'Client Management', desc: 'Complete client profiles with full payment history and activity timeline.' },
+            { icon: BarChart3, color: '#8B5CF6', title: 'Reports & Insights', desc: 'Accounts receivable, income statements, EVC reports, and more.' },
+          ].map(f => (
+            <div key={f.title} className="bg-white rounded-xl p-6 border shadow-sm">
+              <div className="h-10 w-10 rounded-lg flex items-center justify-center mb-4" style={{ backgroundColor: `${f.color}15` }}>
+                <f.icon className="h-5 w-5" style={{ color: f.color }} />
+              </div>
+              <h3 className="font-semibold mb-2">{f.title}</h3>
+              <p className="text-sm text-muted-foreground">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* EVC Section */}
+      <section className="bg-gradient-to-br from-[#0F4C81] to-[#1a6db5] text-white px-6 py-16">
+        <div className="max-w-3xl mx-auto text-center">
+          <Zap className="h-12 w-12 text-[#F5A623] mx-auto mb-4" />
+          <h2 className="text-3xl font-bold mb-4">EVC Plus Integration</h2>
+          <p className="text-white/80 mb-8 text-lg">
+            Connect your Hormud EVC merchant account. Every payment syncs every 60 seconds.
+            Bayzara resolves the sender&apos;s name, matches the invoice, and records the payment — automatically.
           </p>
+          <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto mb-8">
+            {['Money arrives', 'Name resolved', 'Invoice updated'].map((step, i) => (
+              <div key={step} className="text-center">
+                <div className="h-10 w-10 rounded-full bg-[#F5A623] flex items-center justify-center mx-auto mb-2 font-bold text-black">
+                  {i + 1}
+                </div>
+                <p className="text-sm text-white/80">{step}</p>
+              </div>
+            ))}
+          </div>
+          <Button asChild size="lg" className="bg-[#F5A623] hover:bg-[#e09520] text-black font-semibold">
+            <Link href="/signup">Connect EVC Plus →</Link>
+          </Button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Footer */}
+      <footer className="text-center py-8 text-sm text-muted-foreground border-t bg-white">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: '#0F4C81' }}>
+            <span className="text-white text-xs font-bold">B</span>
+          </div>
+          <span className="font-semibold text-[#0F4C81]">Bayzara</span>
         </div>
-      </main>
+        <p>© 2026 Bayzara · Business clarity for Somalia</p>
+      </footer>
     </div>
-  );
+  )
 }
