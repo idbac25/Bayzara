@@ -37,22 +37,14 @@ function buildNav(slug: string, hasEvc: boolean): NavSection[] {
       items: [
         { label: 'Clients', href: `${base}/clients`, icon: Users },
         { label: 'Quotations', href: `${base}/quotations`, icon: FileText },
-        { label: 'Proforma Invoices', href: `${base}/proforma-invoices`, icon: FileCheck },
         { label: 'Invoices', href: `${base}/invoices`, icon: Receipt },
-        { label: 'Payment Receipts', href: `${base}/payment-receipts`, icon: CreditCard },
-        { label: 'Sales Orders', href: `${base}/sales-orders`, icon: ShoppingCart },
-        { label: 'Delivery Challans', href: `${base}/delivery-challans`, icon: Truck },
-        { label: 'Credit Notes', href: `${base}/credit-notes`, icon: FileX },
       ]
     },
     {
       title: 'PURCHASES',
       items: [
         { label: 'Vendors', href: `${base}/vendors`, icon: Store },
-        { label: 'Purchases & Expenses', href: `${base}/purchases`, icon: ShoppingCart },
-        { label: 'Purchase Orders', href: `${base}/purchase-orders`, icon: FileText },
-        { label: 'Payout Receipts', href: `${base}/payout-receipts`, icon: FileOutput },
-        { label: 'Debit Notes', href: `${base}/debit-notes`, icon: FileText },
+        { label: 'Purchases & Bills', href: `${base}/purchases`, icon: ShoppingCart },
       ]
     },
     {
