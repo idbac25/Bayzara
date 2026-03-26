@@ -3,9 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,71 +10,67 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-})
-
-type LoginForm = z.infer<typeof loginSchema>
-
 export default function LoginPage() {
   const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-  })
-
-  const onSubmit = async (data: LoginForm) => {
-    setLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError(null)
-    const supabase = createClient()
+    setLoading(true)
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    })
+    try {
+      const supabase = createClient()
 
-    if (authError) {
-      setError(authError.message)
-      setLoading(false)
-      return
-    }
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
 
-    // Check if user has a business
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: businesses } = await supabase
-        .from('business_users')
-        .select('businesses(slug)')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single()
-
-      if (businesses?.businesses && 'slug' in businesses.businesses) {
-        router.push(`/app/${businesses.businesses.slug}`)
-      } else {
-        router.push('/onboarding')
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
       }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: bizUsers } = await supabase
+          .from('business_users')
+          .select('businesses(slug)')
+          .eq('user_id', user.id)
+          .limit(1)
+
+        const slug = bizUsers?.[0]?.businesses
+        if (slug && !Array.isArray(slug) && 'slug' in slug) {
+          router.push(`/app/${slug.slug}`)
+        } else if (Array.isArray(slug) && slug[0]?.slug) {
+          router.push(`/app/${slug[0].slug}`)
+        } else {
+          router.push('/onboarding')
+        }
+        router.refresh()
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setLoading(false)
     }
-    router.refresh()
   }
 
   const handleGoogleLogin = async () => {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-2">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0F4C81, #1a6db5)' }}>
@@ -94,18 +87,17 @@ export default function LoginPage() {
             <CardDescription>Sign in to your Bayzara account</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@business.com"
-                  {...register('email')}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -114,15 +106,14 @@ export default function LoginPage() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
-                  {...register('password')}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
-                )}
               </div>
 
               {error && (
-                <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
                   {error}
                 </div>
               )}
@@ -142,12 +133,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleLogin}
-            >
+            <Button type="button" variant="outline" className="w-full" onClick={handleGoogleLogin}>
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -159,9 +145,7 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-muted-foreground mt-4">
               Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-[#0F4C81] font-medium hover:underline">
-                Sign up
-              </Link>
+              <Link href="/signup" className="text-[#0F4C81] font-medium hover:underline">Sign up</Link>
             </p>
           </CardContent>
         </Card>

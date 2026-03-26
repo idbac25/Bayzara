@@ -3,9 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,50 +10,56 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2 } from 'lucide-react'
 
-const signupSchema = z.object({
-  full_name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
-
-type SignupForm = z.infer<typeof signupSchema>
-
 export default function SignupPage() {
   const router = useRouter()
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const { register, handleSubmit, formState: { errors } } = useForm<SignupForm>({
-    resolver: zodResolver(signupSchema),
-  })
-
-  const onSubmit = async (data: SignupForm) => {
-    setLoading(true)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError(null)
-    const supabase = createClient()
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: { full_name: data.full_name },
-      },
-    })
+    if (!fullName.trim()) { setError('Full name is required'); return }
+    if (!email.trim()) { setError('Email is required'); return }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
 
-    if (authError) {
-      setError(authError.message)
-      setLoading(false)
-      return
-    }
+    setLoading(true)
 
-    if (authData.user) {
-      // Create profile record
-      await supabase.from('profiles').upsert({
-        id: authData.user.id,
-        full_name: data.full_name,
+    try {
+      const supabase = createClient()
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { full_name: fullName.trim() },
+        },
       })
-      router.push('/onboarding')
-      router.refresh()
+
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+        return
+      }
+
+      if (authData.user) {
+        await supabase.from('profiles').upsert({
+          id: authData.user.id,
+          full_name: fullName.trim(),
+          email: email.trim(),
+        })
+        router.push('/onboarding')
+        router.refresh()
+      } else {
+        setError('Something went wrong. Please try again.')
+        setLoading(false)
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setLoading(false)
     }
   }
 
@@ -79,17 +82,16 @@ export default function SignupPage() {
             <CardDescription>Start managing your business with Bayzara</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="full_name">Full Name</Label>
                 <Input
                   id="full_name"
                   placeholder="Ahmed Mohamed"
-                  {...register('full_name')}
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  required
                 />
-                {errors.full_name && (
-                  <p className="text-sm text-destructive">{errors.full_name.message}</p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -98,11 +100,10 @@ export default function SignupPage() {
                   id="email"
                   type="email"
                   placeholder="you@business.com"
-                  {...register('email')}
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
                 />
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email.message}</p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -111,20 +112,23 @@ export default function SignupPage() {
                   id="password"
                   type="password"
                   placeholder="Min 8 characters"
-                  {...register('password')}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
                 />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
-                )}
               </div>
 
               {error && (
-                <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                <div className="p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
                   {error}
                 </div>
               )}
 
-              <Button type="submit" className="w-full bg-[#0F4C81] hover:bg-[#0d3f6e]" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full bg-[#0F4C81] hover:bg-[#0d3f6e]"
+                disabled={loading}
+              >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Create account
               </Button>
