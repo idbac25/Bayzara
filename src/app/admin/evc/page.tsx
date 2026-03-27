@@ -12,5 +12,6 @@ export default async function AdminEVCPage() {
     .select('id, merchant_name, merchant_phone, merchant_number, is_active, status, current_balance, last_synced_at, created_at, business_id, businesses(name, slug)')
     .order('created_at', { ascending: false })
 
-  return <EVCAdminClient connections={connections ?? []} />
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <EVCAdminClient connections={(connections ?? []) as any} />
 }

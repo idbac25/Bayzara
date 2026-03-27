@@ -12,5 +12,6 @@ export default async function RolesPage() {
     .select('id, role, user_id, business_id, created_at, profiles(full_name, email), businesses(id, name, slug)')
     .order('created_at', { ascending: false })
 
-  return <RolesClient memberships={memberships ?? []} />
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <RolesClient memberships={(memberships ?? []) as any} />
 }

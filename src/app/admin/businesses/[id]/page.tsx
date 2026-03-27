@@ -36,10 +36,16 @@ export default async function BusinessDetailPage({ params }: Props) {
 
   const totalVolume = (volumeData ?? []).reduce((s, d) => s + (d.total ?? 0), 0)
 
+  // Supabase returns joined relations as arrays — normalize to single object
+  const normalizedMembers = (members ?? []).map(m => ({
+    ...m,
+    profiles: Array.isArray(m.profiles) ? m.profiles[0] ?? null : m.profiles,
+  }))
+
   return (
     <BusinessDetailClient
       business={business}
-      members={members ?? []}
+      members={normalizedMembers}
       plans={plans ?? []}
       evcConnections={evcConns ?? []}
       stats={{
