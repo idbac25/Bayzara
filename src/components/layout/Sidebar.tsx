@@ -103,7 +103,8 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
     localStorage.setItem('sidebar-collapsed', String(next))
   }
 
-  const nav = buildNav(business.slug, false)
+  const hasEvc = !!(business as unknown as Record<string, unknown>).has_evc
+  const nav = buildNav(business.slug, hasEvc)
 
   const isActive = (href: string) => {
     if (href === `/app/${business.slug}`) return pathname === href

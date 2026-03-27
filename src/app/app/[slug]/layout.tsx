@@ -40,6 +40,23 @@ export default async function AppLayout({ children, params }: Props) {
 
   if (!membership) redirect('/app')
 
+  // Load active platform announcement if any
+  const { data: announcement } = await admin
+    .from('platform_announcements')
+    .select('message, type')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle()
+
+  // Check if business has an active EVC connection
+  const { count: evcCount } = await admin
+    .from('evc_connections')
+    .select('*', { count: 'exact', head: true })
+    .eq('business_id', business.id)
+    .eq('is_active', true)
+
+  const businessWithEvc = { ...business, has_evc: (evcCount ?? 0) > 0 }
+
   // Load all businesses for the switcher
   const { data: allMemberships } = await admin
     .from('business_users')
@@ -58,10 +75,11 @@ export default async function AppLayout({ children, params }: Props) {
 
   return (
     <AppShell
-      business={business as unknown as Parameters<typeof AppShell>[0]['business']}
+      business={businessWithEvc as unknown as Parameters<typeof AppShell>[0]['business']}
       userRole={membership.role as Parameters<typeof AppShell>[0]['userRole']}
       user={user}
       businesses={businesses}
+      announcement={announcement ?? undefined}
     >
       {children}
     </AppShell>

@@ -7,16 +7,18 @@ import { TopBar } from './TopBar'
 import type { Business, UserRole } from '@/types/database'
 import { Toaster } from '@/components/ui/sonner'
 import { User } from '@supabase/supabase-js'
+import { AnnouncementBanner } from './AnnouncementBanner'
 
 interface AppShellProps {
   business: Business
   userRole: UserRole
   user: User
   businesses: Array<{ slug: string; name: string; logo_url?: string; plan: string }>
+  announcement?: { message: string; type: string }
   children: React.ReactNode
 }
 
-export function AppShell({ business, userRole, user, businesses, children }: AppShellProps) {
+export function AppShell({ business, userRole, user, businesses, announcement, children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -42,6 +44,9 @@ export function AppShell({ business, userRole, user, businesses, children }: App
 
         {/* Main content */}
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          {announcement && (
+            <AnnouncementBanner message={announcement.message} type={announcement.type} />
+          )}
           <TopBar
             onMenuClick={() => setMobileOpen(true)}
             user={user}

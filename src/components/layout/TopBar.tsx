@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useBusiness } from '@/contexts/BusinessContext'
 import { createClient } from '@/lib/supabase/client'
-import { Bell, Menu, ChevronDown, LogOut, User, Settings, Plus, Check } from 'lucide-react'
+import { Menu, ChevronDown, LogOut, User, Settings, Plus, Check } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,16 +118,6 @@ export function TopBar({ onMenuClick, user, businesses, unreadCount = 0 }: TopBa
 
       {/* Right */}
       <div className="flex items-center gap-2 ml-auto">
-        {/* Notifications */}
-        <button className="relative p-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors">
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 h-4 w-4 bg-[#E74C3C] text-white text-[10px] rounded-full flex items-center justify-center font-medium">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
-
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
