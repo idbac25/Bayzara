@@ -50,8 +50,8 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Protected routes
-  if (pathname.startsWith('/app') || pathname === '/onboarding') {
+  // Protected routes — redirect to login if not authenticated
+  if (pathname.startsWith('/app') || pathname === '/onboarding' || pathname.startsWith('/admin')) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'

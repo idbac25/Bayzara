@@ -1,10 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+
+// Use service role to avoid session-cookie race condition right after OAuth exchange
+const admin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/app'
 
   if (code) {
     const supabase = await createClient()
@@ -12,22 +18,30 @@ export async function GET(request: Request) {
 
     if (!error && data.user) {
       // Ensure profile exists
-      await supabase.from('profiles').upsert({
+      await admin.from('profiles').upsert({
         id: data.user.id,
         full_name: data.user.user_metadata?.full_name ?? data.user.email,
         avatar_url: data.user.user_metadata?.avatar_url ?? null,
-      })
+      }, { onConflict: 'id', ignoreDuplicates: false })
 
-      // Check if user has businesses
-      const { data: businesses } = await supabase
+      // Use admin client — avoids RLS/cookie race condition right after session exchange
+      const { data: membership } = await admin
         .from('business_users')
-        .select('businesses(slug)')
+        .select('business_id')
         .eq('user_id', data.user.id)
         .limit(1)
-        .single()
+        .maybeSingle()
 
-      if (businesses?.businesses && 'slug' in businesses.businesses) {
-        return NextResponse.redirect(`${origin}/app/${businesses.businesses.slug}`)
+      if (membership?.business_id) {
+        const { data: biz } = await admin
+          .from('businesses')
+          .select('slug')
+          .eq('id', membership.business_id)
+          .maybeSingle()
+
+        if (biz?.slug) {
+          return NextResponse.redirect(`${origin}/app/${biz.slug}`)
+        }
       }
 
       return NextResponse.redirect(`${origin}/onboarding`)
