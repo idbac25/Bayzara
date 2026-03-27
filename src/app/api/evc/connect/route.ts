@@ -85,20 +85,12 @@ export async function POST(request: NextRequest) {
       .insert({
         business_id,
         merchant_name: merchantName,
-        subscription_id: subscriptionId,
-        partner_uid: partnerUid,
-        account_id: accountId,
-        account_number: accountNumber,
-        session_id: sessionId,
+        merchant_phone: username,
+        merchant_number: accountNumber || subscriptionId,
         session_token: token,
-        session_cookie: sessionCookie,
-        session_expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-        encrypted_username: username,
-        encrypted_password: password,
         current_balance: currentBalance,
-        balance_updated_at: new Date().toISOString(),
         is_active: false,
-        sync_enabled: true,
+        status: 'pending',
       })
       .select()
       .single()
@@ -110,14 +102,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       connection_id: connection.id,
       merchant_name: merchantName,
-      subscription_id: subscriptionId,
-      partner_uid: partnerUid,
-      account_id: accountId,
-      account_number: accountNumber,
+      merchant_phone: username,
+      merchant_number: accountNumber || subscriptionId,
       current_balance: currentBalance,
-      session_id: sessionId,
-      session_token: token,
-      session_cookie: sessionCookie,
     })
 
   } catch (err) {
