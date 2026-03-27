@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import * as api from '@/lib/api'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -61,7 +61,7 @@ interface PaymentRecord {
   id: string
   amount: number
   date: string
-  payment_method: string
+  method: string
   auto_recorded?: boolean
 }
 
@@ -98,36 +98,23 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
 
   const recordPayment = async () => {
     setSaving(true)
-    const supabase = createClient()
     const amount = parseFloat(paymentAmount)
 
-    const { error } = await supabase.from('payment_records').insert({
-      document_id: doc.id,
-      business_id: doc.business_id,
-      amount,
-      date: paymentDate,
-      payment_method: paymentMethod,
-      payment_account_id: paymentAccountId || null,
-      reference_number: paymentRef || null,
-      notes: paymentNotes || null,
-    })
-
-    if (error) { toast.error(error.message); setSaving(false); return }
-
-    // Update document payment status
-    const newPaid = (doc.amount_paid) + amount
-    const newDue = (doc.total) - newPaid
-    const newStatus = newDue <= 0 ? 'paid' : newPaid > 0 ? 'partially_paid' : doc.status
-
-    await supabase
-      .from('documents')
-      .update({ amount_paid: newPaid, amount_due: Math.max(0, newDue), status: newStatus })
-      .eq('id', doc.id)
-
-    toast.success('Payment recorded')
+    try {
+      await api.invoices.recordPayment(doc.id, {
+        amount,
+        date: paymentDate,
+        payment_method: paymentMethod,
+        payment_account_id: paymentAccountId || null,
+        notes: paymentNotes || null,
+      })
+      toast.success('Payment recorded')
+      setShowPaymentModal(false)
+      router.refresh()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to record payment')
+    }
     setSaving(false)
-    setShowPaymentModal(false)
-    router.refresh()
   }
 
   const typeLabel = (doc.type).replace(/_/g, ' ')
@@ -355,7 +342,7 @@ export function InvoiceDetailClient({ document: doc, lineItems, client, payments
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{formatDate(p.date)}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{(p.payment_method).replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{(p.method ?? '').replace(/_/g, ' ')}</p>
                     </div>
                   </div>
                 ))}
