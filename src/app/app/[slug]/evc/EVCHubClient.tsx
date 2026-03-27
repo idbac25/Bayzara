@@ -1,15 +1,20 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { useBusiness } from '@/contexts/BusinessContext'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { formatCurrency } from '@/lib/utils'
+import { toast } from 'sonner'
 import {
   Zap, Plus, RefreshCw, AlertTriangle, CheckCircle,
-  TrendingUp, Calendar, DollarSign, Eye
+  Calendar, DollarSign, Eye, Trash2
 } from 'lucide-react'
 
 interface EVCConnection {
@@ -47,8 +52,29 @@ interface Props {
   slug: string
 }
 
-export function EVCHubClient({ connections, recentTxs, stats, slug }: Props) {
+export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: Props) {
   const { business } = useBusiness()
+  const router = useRouter()
+  const [connections, setConnections] = useState(initial)
+  const [disconnectTarget, setDisconnectTarget] = useState<EVCConnection | null>(null)
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  const handleDisconnect = async () => {
+    if (!disconnectTarget) return
+    setDisconnecting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('evc_connections').delete().eq('id', disconnectTarget.id)
+    if (error) {
+      toast.error(error.message)
+      setDisconnecting(false)
+      return
+    }
+    setConnections(prev => prev.filter(c => c.id !== disconnectTarget.id))
+    setDisconnectTarget(null)
+    setDisconnecting(false)
+    toast.success(`"${disconnectTarget.merchant_name}" disconnected`)
+    router.refresh()
+  }
 
   return (
     <div>
@@ -149,29 +175,41 @@ export function EVCHubClient({ connections, recentTxs, stats, slug }: Props) {
                 <Card key={conn.id} className={`border ${conn.is_active ? 'border-[#F5A623]/30' : 'border-gray-200'}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <Zap className="h-4 w-4 text-[#F5A623]" />
+                          <Zap className="h-4 w-4 text-[#F5A623] shrink-0" />
                           <span className="font-semibold">{conn.merchant_name}</span>
                           <Badge
-                            className={`text-[10px] ${conn.is_active && conn.sync_enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
+                            className={`text-[10px] ${conn.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
                             variant="outline"
                           >
-                            {conn.is_active && conn.sync_enabled ? '● LIVE' : 'Paused'}
+                            {conn.is_active ? '● LIVE' : 'Pending'}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground font-mono">{conn.account_number}</p>
+                        {conn.account_number && (
+                          <p className="text-sm text-muted-foreground font-mono">{conn.account_number}</p>
+                        )}
                         {conn.last_synced_at && (
                           <p className="text-xs text-muted-foreground mt-1">
                             Last sync: {new Date(conn.last_synced_at).toLocaleString()}
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">{conn.currency} Balance</p>
-                        <p className="text-xl font-bold text-[#27AE60]">
-                          {formatCurrency(conn.current_balance, conn.currency)}
-                        </p>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Balance</p>
+                          <p className="text-xl font-bold text-[#27AE60]">
+                            {formatCurrency(conn.current_balance, 'USD')}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
+                          onClick={() => setDisconnectTarget(conn)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />Disconnect
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -233,6 +271,16 @@ export function EVCHubClient({ connections, recentTxs, stats, slug }: Props) {
           </Card>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!disconnectTarget}
+        onOpenChange={o => !o && setDisconnectTarget(null)}
+        title={`Disconnect "${disconnectTarget?.merchant_name}"?`}
+        description="This will remove the EVC connection. Existing recorded payments won't be affected. You can reconnect at any time."
+        confirmLabel="Disconnect"
+        loading={disconnecting}
+        onConfirm={handleDisconnect}
+      />
     </div>
   )
 }
