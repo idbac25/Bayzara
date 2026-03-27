@@ -59,6 +59,7 @@ export interface Business {
   plan: string
   plan_expires_at: string | null
   owner_id: string
+  features: Record<string, boolean | number> | null
   created_at: string
   updated_at: string
 }
@@ -142,6 +143,9 @@ export interface Client {
   evc_phone: string | null
   portal_access: boolean
   archived: boolean
+  payment_terms: 'cash' | 'credit'
+  credit_limit: number
+  credit_terms_days: number
   created_at: string
   updated_at: string
 }

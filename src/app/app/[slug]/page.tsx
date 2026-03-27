@@ -40,6 +40,14 @@ export default async function DashboardPage({ params }: Props) {
     .is('deleted_at', null)
     .gte('date', monthStart)
 
+  // Load all-time invoice stats (includes date for client-side custom range filtering)
+  const { data: allTimeData } = await supabase
+    .from('documents')
+    .select('date, total, amount_paid, amount_due, status')
+    .eq('business_id', business?.id)
+    .eq('type', 'invoice')
+    .is('deleted_at', null)
+
   // Load EVC connections
   const { data: evcConnections } = await supabase
     .from('evc_connections')
@@ -63,11 +71,21 @@ export default async function DashboardPage({ params }: Props) {
     invoiceCount: monthStats?.length ?? 0,
   }
 
+  const allTimeStats = {
+    totalInvoiced: allTimeData?.reduce((s, d) => s + d.total, 0) ?? 0,
+    totalPaid: allTimeData?.reduce((s, d) => s + d.amount_paid, 0) ?? 0,
+    totalOutstanding: allTimeData?.reduce((s, d) => s + d.amount_due, 0) ?? 0,
+    totalOverdue: allTimeData?.filter(d => d.status === 'overdue').reduce((s, d) => s + d.amount_due, 0) ?? 0,
+    invoiceCount: allTimeData?.length ?? 0,
+  }
+
   return (
     <DashboardClient
       user={user}
       business={business}
       stats={stats}
+      allTimeStats={allTimeStats}
+      invoiceData={allTimeData ?? []}
       recentInvoices={recentInvoices ?? []}
       evcConnections={evcConnections ?? []}
       recentEvc={recentEvc ?? []}

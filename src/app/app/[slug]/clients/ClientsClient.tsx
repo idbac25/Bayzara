@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import * as api from '@/lib/api'
-import { useBusiness } from '@/contexts/BusinessContext'
-import { DataTable } from '@/components/shared/DataTable'
+import { useBusiness, useRole, useFeature } from '@/contexts/BusinessContext'
+import { DataTable, type BulkAction } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -27,7 +27,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { Client } from '@/types/database'
-import { Users, MoreHorizontal, Plus, Pencil, Trash2, Archive, Eye } from 'lucide-react'
+import { Users, MoreHorizontal, Plus, Pencil, Trash2, Archive, Eye, Upload, Filter, Download as DownloadIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -44,6 +44,9 @@ const clientSchema = z.object({
   country: z.string().optional(),
   notes: z.string().optional(),
   evc_phone: z.string().optional(),
+  payment_terms: z.enum(['cash', 'credit']).default('cash'),
+  credit_limit: z.string().optional(),
+  credit_terms_days: z.string().optional(),
 })
 
 type ClientForm = z.infer<typeof clientSchema>
@@ -53,23 +56,96 @@ interface ClientsClientProps {
   slug: string
 }
 
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length < 2) return []
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'))
+  return lines.slice(1).map(line => {
+    const vals = line.split(',')
+    return Object.fromEntries(headers.map((h, i) => [h, vals[i]?.trim() ?? '']))
+  })
+}
+
 export function ClientsClient({ clients: initialClients, slug }: ClientsClientProps) {
   const { business } = useBusiness()
+  const { canCreate, canDelete } = useRole()
+  const hasCreditCustomers = useFeature('credit_customers')
   const router = useRouter()
   const [clients, setClients] = useState(initialClients)
   const [tab, setTab] = useState<'active' | 'archived'>('active')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<Client | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ClientForm>({
+  // CSV import state
+  const [importOpen, setImportOpen] = useState(false)
+  const [importRows, setImportRows] = useState<Record<string, string>[]>([])
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
-    defaultValues: { type: 'client' },
+    defaultValues: { type: 'client', payment_terms: 'cash' },
+  })
+  const watchPaymentTerms = watch('payment_terms')
+
+  const filtered = clients.filter(c => {
+    if (tab === 'active' ? c.archived : !c.archived) return false
+    if (typeFilter !== 'all' && c.type !== typeFilter) return false
+    return true
   })
 
-  const filtered = clients.filter(c => tab === 'active' ? !c.archived : c.archived)
+  const handleBulkDelete = async (rows: Client[]) => {
+    for (const c of rows) {
+      try {
+        await api.clients.delete(c.id)
+        setClients(prev => prev.filter(x => x.id !== c.id))
+      } catch { /* skip */ }
+    }
+    toast.success(`${rows.length} client${rows.length > 1 ? 's' : ''} deleted`)
+  }
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const text = ev.target?.result as string
+      setImportRows(parseCSV(text))
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportConfirm = async () => {
+    if (!importRows.length) return
+    setImporting(true)
+    let created = 0
+    for (const row of importRows) {
+      if (!row.name) continue
+      try {
+        const c = await api.clients.create(slug, {
+          name: row.name,
+          type: (row.type === 'prospect' ? 'prospect' : 'client') as 'client' | 'prospect',
+          email: row.email || null,
+          phone: row.phone || null,
+          industry: row.industry || null,
+          city: row.city || null,
+          country: row.country || null,
+          address_line1: row.address || row.address_line1 || null,
+        })
+        setClients(prev => [c, ...prev])
+        created++
+      } catch { /* skip invalid rows */ }
+    }
+    setImporting(false)
+    setImportOpen(false)
+    setImportRows([])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    toast.success(`Imported ${created} client${created !== 1 ? 's' : ''}`)
+  }
 
   const openAdd = () => {
     setEditingClient(null)
@@ -91,6 +167,9 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
       country: client.country ?? '',
       notes: client.notes ?? '',
       evc_phone: client.evc_phone ?? '',
+      payment_terms: (client.payment_terms ?? 'cash') as 'cash' | 'credit',
+      credit_limit: String(client.credit_limit ?? 0),
+      credit_terms_days: String(client.credit_terms_days ?? 30),
     })
     setSheetOpen(true)
   }
@@ -109,6 +188,9 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
       country: data.country || null,
       notes: data.notes || null,
       evc_phone: data.evc_phone || null,
+      payment_terms: data.payment_terms ?? 'cash',
+      credit_limit: data.payment_terms === 'credit' ? Number(data.credit_limit ?? 0) : 0,
+      credit_terms_days: data.payment_terms === 'credit' ? Number(data.credit_terms_days ?? 30) : 30,
     }
 
     try {
@@ -223,12 +305,14 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
               <Archive className="mr-2 h-4 w-4" />
               {row.original.archived ? 'Unarchive' : 'Archive'}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setDeleteDialog(row.original)}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />Delete
-            </DropdownMenuItem>
+            {canDelete && (
+              <DropdownMenuItem
+                onClick={() => setDeleteDialog(row.original)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -241,9 +325,16 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
         title="Clients"
         breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Clients' }]}
         action={
-          <Button className="bg-[#0F4C81] hover:bg-[#0d3f6e]" onClick={openAdd}>
-            <Plus className="mr-2 h-4 w-4" />Add Client
-          </Button>
+          canCreate ? (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />Import CSV
+              </Button>
+              <Button className="bg-[#0F4C81] hover:bg-[#0d3f6e]" onClick={openAdd}>
+                <Plus className="mr-2 h-4 w-4" />Add Client
+              </Button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -254,7 +345,7 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
         </TabsList>
       </Tabs>
 
-      {filtered.length === 0 && !sheetOpen ? (
+      {filtered.length === 0 && !sheetOpen && typeFilter === 'all' ? (
         <EmptyState
           icon={Users}
           title={tab === 'active' ? 'No clients yet' : 'No archived clients'}
@@ -267,6 +358,23 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
           data={filtered}
           columns={columns}
           searchPlaceholder="Search clients..."
+          getRowId={row => row.id}
+          bulkActions={canDelete ? [
+            { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: handleBulkDelete },
+          ] : undefined}
+          toolbar={
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="h-9 w-32 gap-1">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="client">Client</SelectItem>
+                <SelectItem value="prospect">Prospect</SelectItem>
+              </SelectContent>
+            </Select>
+          }
         />
       )}
 
@@ -341,6 +449,46 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
               />
             </div>
 
+            {/* Payment terms — only visible when credit_customers feature is enabled */}
+            {hasCreditCustomers && <div className="space-y-2 pt-1 border-t">
+              <Label>Payment Terms</Label>
+              <Select
+                defaultValue="cash"
+                value={watchPaymentTerms}
+                onValueChange={v => setValue('payment_terms', v as 'cash' | 'credit')}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash (pay immediately)</SelectItem>
+                  <SelectItem value="credit">Credit (pay later)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>}
+
+            {hasCreditCustomers && watchPaymentTerms === 'credit' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Credit Limit</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register('credit_limit')}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Terms (days)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    {...register('credit_terms_days')}
+                    placeholder="30"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setSheetOpen(false)}>
                 Cancel
@@ -363,6 +511,82 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
         loading={deleting}
         onConfirm={handleDelete}
       />
+
+      {/* CSV Import Sheet */}
+      <Sheet open={importOpen} onOpenChange={o => { setImportOpen(o); if (!o) { setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = '' } }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Import Clients from CSV</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-6">
+            <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+              <p className="font-medium text-gray-700 mb-1">Expected columns:</p>
+              <p className="font-mono text-xs">name, email, phone, type, industry, city, country, address</p>
+              <button
+                className="mt-2 text-[#0F4C81] hover:underline text-xs flex items-center gap-1"
+                onClick={() => {
+                  const csv = 'name,email,phone,type,industry,city,country,address\nAcme Corp,info@acme.com,+2526001234,client,Retail,Mogadishu,Somalia,KM5 Street'
+                  const blob = new Blob([csv], { type: 'text/csv' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a'); a.href = url; a.download = 'clients-template.csv'; a.click()
+                  URL.revokeObjectURL(url)
+                }}
+              >
+                <DownloadIcon className="h-3 w-3" /> Download template
+              </button>
+            </div>
+
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleFileImport}
+                className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-[#0F4C81] file:text-white hover:file:bg-[#0d3f6e] cursor-pointer"
+              />
+            </div>
+
+            {importRows.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-2">{importRows.length} row{importRows.length !== 1 ? 's' : ''} detected — preview (first 3):</p>
+                <div className="border rounded-lg overflow-hidden text-xs">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">Name</th>
+                        <th className="px-3 py-2 text-left font-medium">Email</th>
+                        <th className="px-3 py-2 text-left font-medium">Phone</th>
+                        <th className="px-3 py-2 text-left font-medium">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {importRows.slice(0, 3).map((row, i) => (
+                        <tr key={i}>
+                          <td className="px-3 py-1.5">{row.name || <span className="text-red-500">—</span>}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.email || '—'}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.phone || '—'}</td>
+                          <td className="px-3 py-1.5">{row.type || 'client'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setImportOpen(false)}>Cancel</Button>
+              <Button
+                className="flex-1 bg-[#0F4C81] hover:bg-[#0d3f6e]"
+                disabled={importRows.length === 0 || importing}
+                onClick={handleImportConfirm}
+              >
+                {importing ? 'Importing...' : `Import ${importRows.length} client${importRows.length !== 1 ? 's' : ''}`}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

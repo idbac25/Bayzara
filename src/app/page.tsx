@@ -100,6 +100,7 @@ export default function LandingPage() {
           <span className="font-semibold text-[#0F4C81]">Bayzara</span>
         </div>
         <p>© 2026 Bayzara · Business clarity for Somalia</p>
+        <p className="text-xs mt-1 text-gray-400">Built by Keyd Solutions</p>
       </footer>
     </div>
   )

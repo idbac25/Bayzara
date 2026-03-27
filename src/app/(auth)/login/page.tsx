@@ -148,6 +148,9 @@ export default function LoginPage() {
             </p>
           </CardContent>
         </Card>
+        <p className="text-center text-xs text-gray-400 mt-4">
+          Bayzara · Built by Keyd Solutions
+        </p>
       </div>
     </div>
   )

@@ -18,6 +18,8 @@ export type FeatureKey =
   | 'team_limit'
   | 'vendors'
   | 'inventory'
+  | 'pos'
+  | 'credit_customers'
   | 'leads_crm'
   | 'reports'
   | 'pdf_export'
@@ -74,6 +76,8 @@ export const FEATURE_LABELS: Record<FeatureKey, { label: string; type: 'toggle' 
   team_limit:         { label: 'Team Member Limit',     type: 'number', description: 'Max team size (0 = unlimited)' },
   vendors:            { label: 'Vendors',               type: 'toggle', description: 'Manage suppliers and vendors' },
   inventory:          { label: 'Inventory',             type: 'toggle', description: 'Product and stock management' },
+  pos:                { label: 'Point of Sale (POS)',   type: 'toggle', description: 'In-store POS with EVC and credit support' },
+  credit_customers:   { label: 'Credit Customers',      type: 'toggle', description: 'Allow clients to buy on credit with payment terms' },
   leads_crm:          { label: 'Leads & CRM',           type: 'toggle', description: 'Sales pipeline and lead tracking' },
   reports:            { label: 'Reports',               type: 'toggle', description: 'Financial reports and analytics' },
   pdf_export:         { label: 'PDF Export',            type: 'toggle', description: 'Download invoices as PDF' },

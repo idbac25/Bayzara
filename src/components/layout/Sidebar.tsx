@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useBusiness } from '@/contexts/BusinessContext'
+import { useBusiness, useFeature } from '@/contexts/BusinessContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart, Truck,
   CreditCard, Store, Package, PieChart, Wallet, Zap, Settings,
   ChevronLeft, ChevronRight, UserCheck, FileCheck, FileX, FileOutput,
-  BarChart3, Kanban, X
+  BarChart3, Kanban, X, Monitor
 } from 'lucide-react'
 
 interface NavItem {
@@ -24,7 +24,7 @@ interface NavSection {
   items: NavItem[]
 }
 
-function buildNav(slug: string, hasEvc: boolean): NavSection[] {
+function buildNav(slug: string, hasEvc: boolean, hasPos: boolean): NavSection[] {
   const base = `/app/${slug}`
   return [
     {
@@ -35,6 +35,7 @@ function buildNav(slug: string, hasEvc: boolean): NavSection[] {
     {
       title: 'SALES',
       items: [
+        ...(hasPos ? [{ label: 'POS', href: `${base}/pos`, icon: Monitor }] : []),
         { label: 'Clients', href: `${base}/clients`, icon: Users },
         { label: 'Quotations', href: `${base}/quotations`, icon: FileText },
         { label: 'Invoices', href: `${base}/invoices`, icon: Receipt },
@@ -91,6 +92,7 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
   const { business } = useBusiness()
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const hasPos = useFeature('pos')
 
   useEffect(() => {
     const stored = localStorage.getItem('sidebar-collapsed')
@@ -104,7 +106,7 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
   }
 
   const hasEvc = !!(business as unknown as Record<string, unknown>).has_evc
-  const nav = buildNav(business.slug, hasEvc)
+  const nav = buildNav(business.slug, hasEvc, hasPos)
 
   const isActive = (href: string) => {
     if (href === `/app/${business.slug}`) return pathname === href

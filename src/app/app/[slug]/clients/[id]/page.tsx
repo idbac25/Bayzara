@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Mail, Phone, MapPin, FileText, TrendingUp, Clock } from 'lucide-react'
+import { Mail, Phone, MapPin, FileText, TrendingUp, Clock, CreditCard, AlertCircle } from 'lucide-react'
+import { hasFeature } from '@/lib/features'
 
 interface Props {
   params: Promise<{ slug: string; id: string }>
@@ -20,7 +21,7 @@ export default async function ClientDetailPage({ params }: Props) {
 
   const { data: business } = await supabase
     .from('businesses')
-    .select('id, currency')
+    .select('id, currency, features')
     .eq('slug', slug)
     .single()
 
@@ -44,6 +45,14 @@ export default async function ClientDetailPage({ params }: Props) {
   const totalInvoiced = documents?.filter(d => d.type === 'invoice').reduce((s, d) => s + d.total, 0) ?? 0
   const totalOutstanding = documents?.filter(d => d.type === 'invoice').reduce((s, d) => s + d.amount_due, 0) ?? 0
   const currency = business?.currency ?? 'USD'
+
+  const hasCreditFeature = hasFeature(business?.features as Record<string, boolean | number> | null, 'credit_customers')
+  const isCreditCustomer = hasCreditFeature && (client as unknown as Record<string, unknown>).payment_terms === 'credit'
+  const creditLimit = Number((client as unknown as Record<string, unknown>).credit_limit ?? 0)
+  const creditTermsDays = Number((client as unknown as Record<string, unknown>).credit_terms_days ?? 30)
+  const creditUsed = totalOutstanding
+  const creditAvailable = Math.max(creditLimit - creditUsed, 0)
+  const creditUsedPct = creditLimit > 0 ? Math.min((creditUsed / creditLimit) * 100, 100) : 0
 
   return (
     <div>
@@ -146,6 +155,54 @@ export default async function ClientDetailPage({ params }: Props) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Credit panel */}
+        {isCreditCustomer && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Credit Account
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Credit Limit</span>
+                <span className="font-semibold">{formatCurrency(creditLimit, currency)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Used</span>
+                <span className={creditUsed > 0 ? 'font-semibold text-amber-600' : 'font-semibold'}>
+                  {formatCurrency(creditUsed, currency)}
+                </span>
+              </div>
+              {creditLimit > 0 && (
+                <>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${creditUsedPct >= 90 ? 'bg-red-500' : creditUsedPct >= 70 ? 'bg-amber-500' : 'bg-[#0F4C81]'}`}
+                      style={{ width: `${creditUsedPct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{formatCurrency(creditAvailable, currency)} available</span>
+                    <span>{Math.round(creditUsedPct)}% used</span>
+                  </div>
+                </>
+              )}
+              {creditUsedPct >= 90 && creditLimit > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 rounded-md px-2 py-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  Near credit limit
+                </div>
+              )}
+              <div className="flex justify-between text-sm pt-1 border-t">
+                <span className="text-muted-foreground">Payment terms</span>
+                <span className="font-medium">{creditTermsDays} days</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Activity/Invoices */}
         <div className="lg:col-span-2">

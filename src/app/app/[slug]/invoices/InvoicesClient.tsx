@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import * as api from '@/lib/api'
-import { useBusiness } from '@/contexts/BusinessContext'
-import { DataTable } from '@/components/shared/DataTable'
+import { useBusiness, useRole } from '@/contexts/BusinessContext'
+import { DataTable, type BulkAction } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -19,8 +19,9 @@ import {
 import type { ColumnDef } from '@tanstack/react-table'
 import {
   Receipt, Plus, MoreHorizontal, Eye, Pencil, Trash2,
-  Copy, CreditCard, Download, TrendingUp, CheckCircle, Clock, AlertCircle
+  Copy, CreditCard, Download, TrendingUp, CheckCircle, Clock, AlertCircle, Filter
 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -49,16 +50,23 @@ interface InvoicesClientProps {
 
 export function InvoicesClient({ invoices: initial, currency, businessId, slug }: InvoicesClientProps) {
   const { business } = useBusiness()
+  const { canCreate, canDelete } = useRole()
   const router = useRouter()
   const [invoices, setInvoices] = useState(initial)
   const [tab, setTab] = useState<'all' | 'recurring' | 'deleted'>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [deleteDialog, setDeleteDialog] = useState<InvoiceRow | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const pendingDeletes = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const filtered = invoices.filter(inv => {
     if (tab === 'deleted') return !!inv.deleted_at
     if (tab === 'recurring') return inv.is_recurring && !inv.deleted_at
-    return !inv.deleted_at
+    if (!inv.deleted_at) {
+      if (statusFilter !== 'all' && inv.status !== statusFilter) return false
+      return true
+    }
+    return false
   })
 
   // Summary stats
@@ -70,17 +78,62 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
     overdue: activeInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + i.amount_due, 0),
   }
 
-  const handleSoftDelete = async (inv: InvoiceRow) => {
-    setDeleting(true)
-    try {
-      await api.invoices.delete(inv.id)
-      setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: new Date().toISOString() } : i))
-      setDeleteDialog(null)
-      toast.success('Invoice moved to trash')
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete invoice')
-    }
+  const handleSoftDelete = (inv: InvoiceRow) => {
+    // Optimistically update UI immediately
+    setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: new Date().toISOString() } : i))
+    setDeleteDialog(null)
     setDeleting(false)
+
+    // Schedule actual API call after toast duration (5s)
+    const timer = setTimeout(async () => {
+      pendingDeletes.current.delete(inv.id)
+      try {
+        await api.invoices.delete(inv.id)
+      } catch {
+        // Restore on failure
+        setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: null } : i))
+        toast.error('Failed to delete invoice')
+      }
+    }, 5000)
+
+    pendingDeletes.current.set(inv.id, timer)
+
+    toast.success('Invoice moved to trash', {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          const t = pendingDeletes.current.get(inv.id)
+          if (t) { clearTimeout(t); pendingDeletes.current.delete(inv.id) }
+          setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: null } : i))
+        },
+      },
+    })
+  }
+
+  const handleBulkDelete = (rows: InvoiceRow[]) => {
+    const deletedAt = new Date().toISOString()
+    rows.forEach(inv => {
+      setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: deletedAt } : i))
+      const timer = setTimeout(async () => {
+        pendingDeletes.current.delete(inv.id)
+        try { await api.invoices.delete(inv.id) } catch { /* ignore */ }
+      }, 5000)
+      pendingDeletes.current.set(inv.id, timer)
+    })
+    toast.success(`${rows.length} invoice${rows.length > 1 ? 's' : ''} moved to trash`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          rows.forEach(inv => {
+            const t = pendingDeletes.current.get(inv.id)
+            if (t) { clearTimeout(t); pendingDeletes.current.delete(inv.id) }
+            setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: null } : i))
+          })
+        },
+      },
+    })
   }
 
   const handleDuplicate = async (inv: InvoiceRow) => {
@@ -193,12 +246,14 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setDeleteDialog(row.original)}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />Delete
-            </DropdownMenuItem>
+            {canDelete && (
+              <DropdownMenuItem
+                onClick={() => setDeleteDialog(row.original)}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -211,11 +266,13 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
         title="Invoices"
         breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Invoices' }]}
         action={
-          <Button asChild className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
-            <Link href={`/app/${slug}/invoices/new`}>
-              <Plus className="mr-2 h-4 w-4" />Create Invoice
-            </Link>
-          </Button>
+          canCreate ? (
+            <Button asChild className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
+              <Link href={`/app/${slug}/invoices/new`}>
+                <Plus className="mr-2 h-4 w-4" />Create Invoice
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -267,7 +324,7 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
         </TabsList>
       </Tabs>
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && statusFilter === 'all' ? (
         <EmptyState
           icon={Receipt}
           title="No invoices yet"
@@ -280,6 +337,29 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
           data={filtered}
           columns={columns}
           searchPlaceholder="Search invoices..."
+          getRowId={row => row.id}
+          bulkActions={canDelete ? [
+            { label: 'Delete', icon: Trash2, variant: 'destructive', onClick: handleBulkDelete },
+          ] : undefined}
+          toolbar={
+            tab === 'all' ? (
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 w-36 gap-1">
+                  <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : undefined
+          }
         />
       )}
 

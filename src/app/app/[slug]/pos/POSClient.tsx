@@ -1,0 +1,599 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
+import { formatCurrency } from '@/lib/utils'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { POSPaymentOverlay } from './POSPaymentOverlay'
+import { POSReceipt } from './POSReceipt'
+import {
+  Search, Plus, Minus, Trash2, ShoppingCart, ArrowLeft,
+  Banknote, Zap, CreditCard, User, ChevronDown
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useFeature } from '@/contexts/BusinessContext'
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface POSItem {
+  id: string
+  name: string
+  sku: string | null
+  unit: string
+  sale_price: number
+  tax_rate: number
+  stock_quantity: number | null
+  type: string
+}
+
+interface POSClient {
+  id: string
+  name: string
+  phone: string | null
+  evc_phone: string | null
+  payment_terms: string
+  credit_limit: number
+  credit_terms_days: number
+}
+
+interface EvcConnection {
+  id: string
+  merchant_name: string
+  account_number: string
+  current_balance: number
+  is_active: boolean
+}
+
+interface Business {
+  id: string
+  name: string
+  slug: string
+  currency: string
+  logo_url: string | null
+  phone: string | null
+  address_line1: string | null
+  city: string | null
+  country: string | null
+}
+
+interface CartItem {
+  item: POSItem
+  quantity: number
+}
+
+interface CompletedSale {
+  invoiceId: string
+  invoiceNumber: string
+  date: string
+  items: { name: string; quantity: number; rate: number; tax_rate: number }[]
+  subtotal: number
+  taxAmount: number
+  total: number
+  paymentMethod: 'cash' | 'evc' | 'credit'
+  currency: string
+  customerName?: string
+}
+
+interface Props {
+  business: Business
+  items: POSItem[]
+  clients: POSClient[]
+  evcConnections: EvcConnection[]
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export function POSClient({ business, items, clients, evcConnections }: Props) {
+  const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [customer, setCustomer] = useState<POSClient | null>(null)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'evc' | 'credit'>('cash')
+  const [selectedEvc, setSelectedEvc] = useState<EvcConnection | null>(evcConnections[0] ?? null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showEvcOverlay, setShowEvcOverlay] = useState(false)
+  const [pendingEvcTranId, setPendingEvcTranId] = useState<string | null>(null)
+  const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
+  const hasCreditCustomers = useFeature('credit_customers')
+  const hasEvcFeature = useFeature('evc_plus')
+
+  // ── Derived state ──────────────────────────────────────────────────────────
+
+  const categories = useMemo(() => {
+    const cats = [...new Set(items.map(i => i.type).filter(Boolean))]
+    return cats as string[]
+  }, [items])
+
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const matchesSearch = !search || item.name.toLowerCase().includes(search.toLowerCase()) ||
+        (item.sku && item.sku.toLowerCase().includes(search.toLowerCase()))
+      const matchesCategory = !categoryFilter || item.type === categoryFilter
+      return matchesSearch && matchesCategory
+    })
+  }, [items, search, categoryFilter])
+
+  const filteredClients = useMemo(() => {
+    if (!customerSearch) return clients.slice(0, 8)
+    const q = customerSearch.toLowerCase()
+    return clients.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.phone?.includes(q) ||
+      c.evc_phone?.includes(q)
+    ).slice(0, 8)
+  }, [clients, customerSearch])
+
+  const subtotal = cart.reduce((s, ci) => s + ci.item.sale_price * ci.quantity, 0)
+  const taxAmount = cart.reduce((s, ci) => {
+    const amount = ci.item.sale_price * ci.quantity
+    return s + amount * (ci.item.tax_rate / 100)
+  }, 0)
+  const total = subtotal + taxAmount
+  const cartCount = cart.reduce((s, ci) => s + ci.quantity, 0)
+
+  // ── Cart actions ───────────────────────────────────────────────────────────
+
+  const addToCart = (item: POSItem) => {
+    setCart(prev => {
+      const existing = prev.find(ci => ci.item.id === item.id)
+      if (existing) {
+        return prev.map(ci =>
+          ci.item.id === item.id ? { ...ci, quantity: ci.quantity + 1 } : ci
+        )
+      }
+      return [...prev, { item, quantity: 1 }]
+    })
+  }
+
+  const updateQty = (itemId: string, delta: number) => {
+    setCart(prev =>
+      prev
+        .map(ci => ci.item.id === itemId ? { ...ci, quantity: ci.quantity + delta } : ci)
+        .filter(ci => ci.quantity > 0)
+    )
+  }
+
+  const removeFromCart = (itemId: string) => {
+    setCart(prev => prev.filter(ci => ci.item.id !== itemId))
+  }
+
+  const clearCart = () => {
+    setCart([])
+    setCustomer(null)
+    setCustomerSearch('')
+    setPaymentMethod('cash')
+    setPendingEvcTranId(null)
+  }
+
+  // ── Sale completion ────────────────────────────────────────────────────────
+
+  const buildSalePayload = (evcTranId?: string) => ({
+    slug: business.slug,
+    line_items: cart.map(ci => ({
+      name: ci.item.name,
+      sku: ci.item.sku,
+      quantity: ci.quantity,
+      rate: ci.item.sale_price,
+      unit: ci.item.unit,
+      tax_rate: ci.item.tax_rate,
+      inventory_item_id: ci.item.id,
+    })),
+    payment_method: paymentMethod,
+    customer_id: customer?.id ?? null,
+    evc_tran_id: evcTranId ?? null,
+    evc_connection_id: selectedEvc?.id ?? null,
+  })
+
+  const submitSale = async (evcTranId?: string) => {
+    setIsProcessing(true)
+    try {
+      const res = await fetch('/api/pos/sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildSalePayload(evcTranId)),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error ?? 'Sale failed')
+        return
+      }
+
+      setCompletedSale({
+        invoiceId: data.invoice_id,
+        invoiceNumber: data.invoice_number,
+        date: data.date,
+        items: cart.map(ci => ({
+          name: ci.item.name,
+          quantity: ci.quantity,
+          rate: ci.item.sale_price,
+          tax_rate: ci.item.tax_rate,
+        })),
+        subtotal,
+        taxAmount,
+        total,
+        paymentMethod,
+        currency: business.currency,
+        customerName: customer?.name,
+      })
+
+      clearCart()
+    } catch {
+      toast.error('Failed to process sale. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleCompleteSale = async () => {
+    if (cart.length === 0) {
+      toast.error('Cart is empty')
+      return
+    }
+    if (paymentMethod === 'credit' && !customer) {
+      toast.error('Select a customer for credit sales')
+      return
+    }
+
+    if (paymentMethod === 'evc') {
+      if (!selectedEvc) {
+        toast.error('No EVC connection available')
+        return
+      }
+      setShowEvcOverlay(true)
+      return
+    }
+
+    await submitSale()
+  }
+
+  const handleEvcConfirmed = async (tranId: string) => {
+    setShowEvcOverlay(false)
+    setPendingEvcTranId(tranId)
+    await submitSale(tranId)
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-64px)] bg-gray-50 -m-6 overflow-hidden">
+      {/* Top bar */}
+      <div className="bg-[#1a2744] text-white px-4 py-2.5 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <Link href={`/app/${business.slug}`} className="text-white/60 hover:text-white">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <span className="font-semibold">Point of Sale</span>
+          <Badge className="bg-[#F5A623] text-black text-[10px] font-bold">LIVE</Badge>
+        </div>
+        <span className="text-white/50 text-sm">{business.name}</span>
+      </div>
+
+      <div className="flex flex-1 min-h-0">
+        {/* ── Left: Product Grid ─────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200">
+          {/* Search + category filter */}
+          <div className="p-3 bg-white border-b flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9 h-9 text-sm"
+                placeholder="Search products..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            {categories.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setCategoryFilter(null)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                    !categoryFilter
+                      ? 'bg-[#0F4C81] text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  )}
+                >
+                  All
+                </button>
+                {categories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setCategoryFilter(cat === categoryFilter ? null : cat)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+                      categoryFilter === cat
+                        ? 'bg-[#0F4C81] text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Product grid */}
+          <div className="flex-1 overflow-y-auto p-3">
+            {filteredItems.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <ShoppingCart className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No products found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                {filteredItems.map(item => {
+                  const inCart = cart.find(ci => ci.item.id === item.id)
+                  const outOfStock = item.stock_quantity != null && item.stock_quantity <= 0
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => !outOfStock && addToCart(item)}
+                      disabled={outOfStock}
+                      className={cn(
+                        'relative bg-white rounded-xl border p-3 text-left transition-all hover:shadow-md hover:border-[#0F4C81]/30 active:scale-95',
+                        inCart && 'border-[#0F4C81] bg-[#0F4C81]/5',
+                        outOfStock && 'opacity-50 cursor-not-allowed'
+                      )}
+                    >
+                      {inCart && (
+                        <span className="absolute top-2 right-2 bg-[#0F4C81] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                          {inCart.quantity}
+                        </span>
+                      )}
+                      <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
+                        <ShoppingCart className="h-6 w-6 text-gray-300" />
+                      </div>
+                      <p className="text-xs font-semibold line-clamp-2 leading-tight mb-1">{item.name}</p>
+                      <p className="text-sm font-bold text-[#0F4C81]">{formatCurrency(item.sale_price, business.currency)}</p>
+                      {item.stock_quantity != null && (
+                        <p className={cn('text-[10px] mt-0.5', item.stock_quantity <= 5 ? 'text-amber-500' : 'text-muted-foreground')}>
+                          {item.stock_quantity} in stock
+                        </p>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Right: Cart + Checkout ──────────────────────────────────── */}
+        <div className="w-80 flex flex-col bg-white flex-shrink-0">
+          {/* Cart header */}
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-[#0F4C81]" />
+              <span className="font-semibold text-sm">Cart</span>
+              {cartCount > 0 && (
+                <span className="bg-[#0F4C81] text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            {cart.length > 0 && (
+              <button onClick={clearCart} className="text-xs text-muted-foreground hover:text-destructive">
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Cart items */}
+          <div className="flex-1 overflow-y-auto">
+            {cart.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                <p className="text-sm">Tap products to add</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {cart.map(ci => (
+                  <div key={ci.item.id} className="px-4 py-2.5 flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{ci.item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatCurrency(ci.item.sale_price, business.currency)} / {ci.item.unit}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => updateQty(ci.item.id, -1)}
+                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-6 text-center text-sm font-semibold">{ci.quantity}</span>
+                      <button
+                        onClick={() => updateQty(ci.item.id, 1)}
+                        className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="text-right min-w-[60px]">
+                      <p className="text-sm font-semibold">{formatCurrency(ci.item.sale_price * ci.quantity, business.currency)}</p>
+                      <button
+                        onClick={() => removeFromCart(ci.item.id)}
+                        className="text-muted-foreground hover:text-destructive mt-0.5"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Totals + payment section */}
+          <div className="border-t p-4 space-y-3">
+            {/* Totals */}
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal, business.currency)}</span>
+              </div>
+              {taxAmount > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax</span>
+                  <span>{formatCurrency(taxAmount, business.currency)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-base pt-1 border-t">
+                <span>Total</span>
+                <span className="text-[#0F4C81]">{formatCurrency(total, business.currency)}</span>
+              </div>
+            </div>
+
+            {/* Customer selector */}
+            <div>
+              <button
+                onClick={() => setShowCustomerSearch(!showCustomerSearch)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors',
+                  customer ? 'border-[#0F4C81]/30 bg-[#0F4C81]/5' : 'border-dashed hover:border-[#0F4C81]/30'
+                )}
+              >
+                <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className={cn('flex-1 text-left truncate', !customer && 'text-muted-foreground')}>
+                  {customer ? customer.name : 'Add customer (optional)'}
+                </span>
+                {customer && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCustomer(null); setCustomerSearch('') }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    ×
+                  </button>
+                )}
+                {!customer && <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              </button>
+
+              {showCustomerSearch && (
+                <div className="mt-1 border rounded-lg bg-white shadow-lg z-10 relative">
+                  <div className="p-2">
+                    <Input
+                      autoFocus
+                      placeholder="Search customers..."
+                      value={customerSearch}
+                      onChange={e => setCustomerSearch(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredClients.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => { setCustomer(c); setShowCustomerSearch(false); if (c.payment_terms === 'credit') setPaymentMethod('credit') }}
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/40 text-left text-sm"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{c.name}</p>
+                          {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
+                        </div>
+                        {c.payment_terms === 'credit' && (
+                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                            Credit
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+                    {filteredClients.length === 0 && (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">No customers found</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Payment method */}
+            <div>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1.5">Payment</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { id: 'cash', label: 'Cash', Icon: Banknote, enabled: true },
+                  { id: 'evc', label: 'EVC', Icon: Zap, enabled: hasEvcFeature && evcConnections.length > 0 },
+                  { id: 'credit', label: 'Credit', Icon: CreditCard, enabled: hasCreditCustomers },
+                ] as const).filter(m => m.enabled).map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    onClick={() => setPaymentMethod(id)}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg border text-xs font-medium transition-colors',
+                      paymentMethod === id
+                        ? 'bg-[#0F4C81] text-white border-[#0F4C81]'
+                        : 'bg-white text-muted-foreground border-gray-200 hover:border-[#0F4C81]/30 hover:text-[#0F4C81]'
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* EVC connection selector */}
+              {paymentMethod === 'evc' && evcConnections.length > 1 && (
+                <div className="mt-2">
+                  <select
+                    className="w-full text-sm border rounded-lg px-3 py-1.5 bg-white"
+                    value={selectedEvc?.id ?? ''}
+                    onChange={e => setSelectedEvc(evcConnections.find(c => c.id === e.target.value) ?? null)}
+                  >
+                    {evcConnections.map(c => (
+                      <option key={c.id} value={c.id}>{c.merchant_name} ({c.account_number})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Credit customer warning */}
+              {paymentMethod === 'credit' && !customer && (
+                <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                  <CreditCard className="h-3 w-3" />
+                  Select a customer for credit sales
+                </p>
+              )}
+            </div>
+
+            {/* Complete sale button */}
+            <Button
+              className="w-full bg-[#0F4C81] hover:bg-[#0d3d6b] h-11 text-base font-semibold"
+              disabled={cart.length === 0 || isProcessing || (paymentMethod === 'credit' && !customer)}
+              onClick={handleCompleteSale}
+            >
+              {isProcessing ? 'Processing...' : `Complete Sale · ${formatCurrency(total, business.currency)}`}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* EVC payment overlay */}
+      {showEvcOverlay && (
+        <POSPaymentOverlay
+          businessId={business.id}
+          expectedAmount={total}
+          currency={business.currency}
+          onConfirmed={handleEvcConfirmed}
+          onCancel={() => setShowEvcOverlay(false)}
+        />
+      )}
+
+      {/* Receipt overlay */}
+      {completedSale && (
+        <POSReceipt
+          sale={completedSale}
+          business={business}
+          onClose={() => setCompletedSale(null)}
+          onNewSale={() => setCompletedSale(null)}
+        />
+      )}
+    </div>
+  )
+}

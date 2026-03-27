@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -12,9 +12,11 @@ import {
   type SortingState,
   type ColumnFiltersState,
   type VisibilityState,
+  type RowSelectionState,
 } from '@tanstack/react-table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -23,8 +25,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronDown, Download, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, Download, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+
+export interface BulkAction<T> {
+  label: string
+  icon?: React.ElementType
+  variant?: 'default' | 'destructive'
+  onClick: (rows: T[]) => void
+}
 
 interface DataTableProps<T> {
   data: T[]
@@ -34,6 +43,8 @@ interface DataTableProps<T> {
   loading?: boolean
   onExportCsv?: () => void
   toolbar?: React.ReactNode
+  bulkActions?: BulkAction<T>[]
+  getRowId?: (row: T) => string
 }
 
 function exportToCSV<T>(data: T[], columns: ColumnDef<T>[], filename: string) {
@@ -73,15 +84,48 @@ export function DataTable<T>({
   loading = false,
   onExportCsv,
   toolbar,
+  bulkActions,
+  getRowId,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [globalFilter, setGlobalFilter] = useState('')
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+  // Prepend checkbox column when bulk actions are provided
+  const allColumns = useMemo<ColumnDef<T>[]>(() => {
+    if (!bulkActions?.length) return columns
+    const selectCol: ColumnDef<T> = {
+      id: '__select__',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected()
+              ? true
+              : table.getIsSomePageRowsSelected()
+              ? 'indeterminate'
+              : false
+          }
+          onCheckedChange={v => table.toggleAllPageRowsSelected(!!v)}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={v => row.toggleSelected(!!v)}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      size: 40,
+    }
+    return [selectCol, ...columns]
+  }, [columns, bulkActions])
 
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -90,9 +134,14 @@ export function DataTable<T>({
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
-    state: { sorting, columnFilters, columnVisibility, globalFilter },
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: !!bulkActions?.length,
+    getRowId,
+    state: { sorting, columnFilters, columnVisibility, globalFilter, rowSelection },
     initialState: { pagination: { pageSize: 25 } },
   })
+
+  const selectedRows = table.getFilteredSelectedRowModel().rows.map(r => r.original)
 
   const handleExport = useCallback(() => {
     if (onExportCsv) {
@@ -104,6 +153,38 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
+      {/* Bulk action bar */}
+      {bulkActions && selectedRows.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#0F4C81]/5 border border-[#0F4C81]/20 rounded-lg">
+          <span className="text-sm font-semibold text-[#0F4C81]">{selectedRows.length} selected</span>
+          <div className="flex items-center gap-2 ml-auto">
+            {bulkActions.map(action => {
+              const Icon = action.icon
+              return (
+                <Button
+                  key={action.label}
+                  size="sm"
+                  variant={action.variant === 'destructive' ? 'destructive' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => { action.onClick(selectedRows); table.resetRowSelection() }}
+                >
+                  {Icon && <Icon className="mr-1.5 h-3.5 w-3.5" />}
+                  {action.label}
+                </Button>
+              )
+            })}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-muted-foreground"
+              onClick={() => table.resetRowSelection()}
+            >
+              <X className="mr-1 h-3 w-3" />Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
         <div className="relative flex-1 max-w-sm">
@@ -178,7 +259,7 @@ export function DataTable<T>({
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {columns.map((_, j) => (
+                  {allColumns.map((_, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
@@ -187,13 +268,16 @@ export function DataTable<T>({
               ))
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={allColumns.length} className="h-24 text-center text-muted-foreground">
                   No results found.
                 </TableCell>
               </TableRow>
             ) : (
               table.getRowModel().rows.map(row => (
-                <TableRow key={row.id} className="hover:bg-muted/30">
+                <TableRow
+                  key={row.id}
+                  className={`hover:bg-muted/30 ${row.getIsSelected() ? 'bg-[#0F4C81]/5' : ''}`}
+                >
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id} className="py-3">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

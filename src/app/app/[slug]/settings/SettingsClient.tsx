@@ -15,7 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
-import { Save, Building2, User, Users, FileText, Shield } from 'lucide-react'
+import { Save, Building2, User, Users, FileText, Shield, Lock } from 'lucide-react'
+import { useRole } from '@/contexts/BusinessContext'
 
 interface Business {
   id: string
@@ -81,6 +82,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function SettingsClient({ business: biz, profile, teamMembers, sequences, slug, userId }: Props) {
   const { business } = useBusiness()
+  const { canManageSettings } = useRole()
   const router = useRouter()
 
   // Business form
@@ -263,10 +265,17 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
               </CardContent>
             </Card>
 
-            <Button onClick={handleSaveBusiness} disabled={savingBiz} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
-              <Save className="mr-2 h-4 w-4" />
-              {savingBiz ? 'Saving...' : 'Save Business Settings'}
-            </Button>
+            {canManageSettings ? (
+              <Button onClick={handleSaveBusiness} disabled={savingBiz} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
+                <Save className="mr-2 h-4 w-4" />
+                {savingBiz ? 'Saving...' : 'Save Business Settings'}
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                <Lock className="h-4 w-4" />
+                Only admins can change business settings.
+              </div>
+            )}
           </div>
         </TabsContent>
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { User } from '@supabase/supabase-js'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,16 +13,20 @@ import {
   ArrowUpRight
 } from 'lucide-react'
 
+type StatBlock = {
+  totalInvoiced: number
+  totalPaid: number
+  totalOutstanding: number
+  totalOverdue: number
+  invoiceCount: number
+}
+
 interface DashboardClientProps {
   user: User | null
   business: { name: string; currency: string } | null
-  stats: {
-    totalInvoiced: number
-    totalPaid: number
-    totalOutstanding: number
-    totalOverdue: number
-    invoiceCount: number
-  }
+  stats: StatBlock
+  allTimeStats: StatBlock
+  invoiceData: Array<{ date: string; total: number; amount_paid: number; amount_due: number; status: string }>
   recentInvoices: Array<{
     id: string
     document_number: string
@@ -60,9 +65,26 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: 'bg-slate-100 text-slate-600',
 }
 
-export function DashboardClient({ user, business, stats, recentInvoices, evcConnections, recentEvc, slug }: DashboardClientProps) {
+export function DashboardClient({ user, business, stats, allTimeStats, invoiceData, recentInvoices, evcConnections, recentEvc, slug }: DashboardClientProps) {
   const currency = business?.currency ?? 'USD'
   const userName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'there'
+  const [period, setPeriod] = useState<'month' | 'alltime' | 'custom'>('month')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+
+  const customStats = useMemo<StatBlock>(() => {
+    if (!customFrom || !customTo) return { totalInvoiced: 0, totalPaid: 0, totalOutstanding: 0, totalOverdue: 0, invoiceCount: 0 }
+    const rows = invoiceData.filter(d => d.date >= customFrom && d.date <= customTo)
+    return {
+      totalInvoiced: rows.reduce((s, d) => s + d.total, 0),
+      totalPaid: rows.reduce((s, d) => s + d.amount_paid, 0),
+      totalOutstanding: rows.reduce((s, d) => s + d.amount_due, 0),
+      totalOverdue: rows.filter(d => d.status === 'overdue').reduce((s, d) => s + d.amount_due, 0),
+      invoiceCount: rows.length,
+    }
+  }, [invoiceData, customFrom, customTo])
+
+  const activeStats = period === 'month' ? stats : period === 'alltime' ? allTimeStats : customStats
 
   const isNew = stats.invoiceCount === 0 && evcConnections.length === 0
 
@@ -132,47 +154,95 @@ export function DashboardClient({ user, business, stats, recentInvoices, evcConn
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoiced</p>
-              <TrendingUp className="h-4 w-4 text-[#0F4C81]" />
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Overview</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {period === 'custom' && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customFrom}
+                  onChange={e => setCustomFrom(e.target.value)}
+                  className="h-7 px-2 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-[#0F4C81]"
+                />
+                <span className="text-xs text-muted-foreground">to</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom}
+                  onChange={e => setCustomTo(e.target.value)}
+                  className="h-7 px-2 text-xs border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-[#0F4C81]"
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+              <button
+                onClick={() => setPeriod('month')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${period === 'month' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                This Month
+              </button>
+              <button
+                onClick={() => setPeriod('alltime')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${period === 'alltime' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                All Time
+              </button>
+              <button
+                onClick={() => setPeriod('custom')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${period === 'custom' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Custom
+              </button>
             </div>
-            <p className="text-xl font-bold mt-2">{formatCurrency(stats.totalInvoiced, currency)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{stats.invoiceCount} invoices this month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Received</p>
-              <CheckCircle className="h-4 w-4 text-[#27AE60]" />
-            </div>
-            <p className="text-xl font-bold mt-2 text-[#27AE60]">{formatCurrency(stats.totalPaid, currency)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Collected this month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding</p>
-              <Clock className="h-4 w-4 text-[#F39C12]" />
-            </div>
-            <p className="text-xl font-bold mt-2 text-[#F39C12]">{formatCurrency(stats.totalOutstanding, currency)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overdue</p>
-              <AlertCircle className="h-4 w-4 text-[#E74C3C]" />
-            </div>
-            <p className="text-xl font-bold mt-2 text-[#E74C3C]">{formatCurrency(stats.totalOverdue, currency)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Past due date</p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoiced</p>
+                <TrendingUp className="h-4 w-4 text-[#0F4C81]" />
+              </div>
+              <p className="text-xl font-bold mt-2">{formatCurrency(activeStats.totalInvoiced, currency)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {activeStats.invoiceCount} invoice{activeStats.invoiceCount !== 1 ? 's' : ''}
+                {period === 'custom' && customFrom && customTo ? '' : period === 'month' ? ' this month' : ''}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Received</p>
+                <CheckCircle className="h-4 w-4 text-[#27AE60]" />
+              </div>
+              <p className="text-xl font-bold mt-2 text-[#27AE60]">{formatCurrency(activeStats.totalPaid, currency)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Collected</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding</p>
+                <Clock className="h-4 w-4 text-[#F39C12]" />
+              </div>
+              <p className="text-xl font-bold mt-2 text-[#F39C12]">{formatCurrency(activeStats.totalOutstanding, currency)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overdue</p>
+                <AlertCircle className="h-4 w-4 text-[#E74C3C]" />
+              </div>
+              <p className="text-xl font-bold mt-2 text-[#E74C3C]">{formatCurrency(activeStats.totalOverdue, currency)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Past due date</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Recent Invoices + EVC */}
