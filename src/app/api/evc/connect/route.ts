@@ -19,21 +19,26 @@ export async function POST(request: NextRequest) {
     })
 
     let loginData: Record<string, unknown> = {}
+    let rawText = ''
     try {
-      loginData = await loginRes.json()
+      rawText = await loginRes.text()
+      loginData = JSON.parse(rawText)
     } catch {
       return NextResponse.json(
-        { error: `Hormud returned non-JSON (status ${loginRes.status}). The API may be down.` },
+        { error: `Hormud API (status ${loginRes.status}): ${rawText.slice(0, 300)}` },
         { status: 502 }
       )
     }
 
-    const resultCode = String(loginData.resultCode ?? loginData.ResultCode ?? loginData.result_code ?? '')
+    // DEBUG — remove after diagnosing
+    console.log('Hormud login response:', JSON.stringify(loginData))
 
-    if (resultCode !== '2001') {
-      const msg = loginData.resultDescription ?? loginData.ResultDescription ?? loginData.message ?? loginData.Message ?? resultCode
+    const resultCode = String(loginData.resultCode ?? loginData.ResultCode ?? loginData.result_code ?? loginData.code ?? loginData.Code ?? '')
+    const isSuccess = resultCode === '2001' || loginData.token || loginData.Token || loginData.sessionId || loginData.SessionId
+
+    if (!isSuccess) {
       return NextResponse.json(
-        { error: `Hormud: ${msg || 'Login failed (code ' + resultCode + ')'}` },
+        { error: `Hormud raw response: ${rawText.slice(0, 500)}` },
         { status: 401 }
       )
     }
