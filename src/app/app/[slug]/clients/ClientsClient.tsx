@@ -44,7 +44,7 @@ const clientSchema = z.object({
   country: z.string().optional(),
   notes: z.string().optional(),
   evc_phone: z.string().optional(),
-  payment_terms: z.enum(['cash', 'credit']).default('cash'),
+  payment_terms: z.enum(['cash', 'credit']),
   credit_limit: z.string().optional(),
   credit_terms_days: z.string().optional(),
 })
