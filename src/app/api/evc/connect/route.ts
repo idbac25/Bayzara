@@ -18,11 +18,22 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ username, password }),
     })
 
-    const loginData = await loginRes.json()
-
-    if (loginData.resultCode !== '2001' && loginData.resultCode !== 2001) {
+    let loginData: Record<string, unknown> = {}
+    try {
+      loginData = await loginRes.json()
+    } catch {
       return NextResponse.json(
-        { error: 'Invalid credentials. Check your Hormud merchant username and password.' },
+        { error: `Hormud returned non-JSON (status ${loginRes.status}). The API may be down.` },
+        { status: 502 }
+      )
+    }
+
+    const resultCode = String(loginData.resultCode ?? loginData.ResultCode ?? loginData.result_code ?? '')
+
+    if (resultCode !== '2001') {
+      const msg = loginData.resultDescription ?? loginData.ResultDescription ?? loginData.message ?? loginData.Message ?? resultCode
+      return NextResponse.json(
+        { error: `Hormud: ${msg || 'Login failed (code ' + resultCode + ')'}` },
         { status: 401 }
       )
     }
