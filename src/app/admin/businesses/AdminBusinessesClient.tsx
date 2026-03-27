@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
-import { Building2, Search, Download } from 'lucide-react'
+import { Building2, Search, Download, ExternalLink } from 'lucide-react'
 
 interface Business {
   id: string
