@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient as createSupabaseClient } from '@/lib/supabase/client'
+import * as api from '@/lib/api'
 import { useBusiness } from '@/contexts/BusinessContext'
 import { DataTable } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -97,10 +97,7 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
 
   const onSave = async (data: ClientForm) => {
     setSaving(true)
-    const supabase = createSupabaseClient()
-
     const payload = {
-      business_id: business.id,
       name: data.name,
       type: data.type,
       industry: data.industry || null,
@@ -114,57 +111,45 @@ export function ClientsClient({ clients: initialClients, slug }: ClientsClientPr
       evc_phone: data.evc_phone || null,
     }
 
-    if (editingClient) {
-      const { data: updated, error } = await supabase
-        .from('clients')
-        .update(payload)
-        .eq('id', editingClient.id)
-        .select()
-        .single()
-
-      if (error) { toast.error(error.message); setSaving(false); return }
-      setClients(prev => prev.map(c => c.id === editingClient.id ? updated : c))
-      toast.success('Client updated')
-    } else {
-      const { data: created, error } = await supabase
-        .from('clients')
-        .insert(payload)
-        .select()
-        .single()
-
-      if (error) { toast.error(error.message); setSaving(false); return }
-      setClients(prev => [created, ...prev])
-      toast.success('Client added')
+    try {
+      if (editingClient) {
+        const updated = await api.clients.update(editingClient.id, payload)
+        setClients(prev => prev.map(c => c.id === editingClient.id ? updated : c))
+        toast.success('Client updated')
+      } else {
+        const created = await api.clients.create(slug, payload)
+        setClients(prev => [created, ...prev])
+        toast.success('Client added')
+      }
+      setSheetOpen(false)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save client')
     }
-
     setSaving(false)
-    setSheetOpen(false)
   }
 
   const handleArchive = async (client: Client) => {
-    const supabase = createSupabaseClient()
-    const { data: updated } = await supabase
-      .from('clients')
-      .update({ archived: !client.archived })
-      .eq('id', client.id)
-      .select()
-      .single()
-    if (updated) {
+    try {
+      const updated = await api.clients.archive(client.id)
       setClients(prev => prev.map(c => c.id === client.id ? updated : c))
       toast.success(client.archived ? 'Client restored' : 'Client archived')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update client')
     }
   }
 
   const handleDelete = async () => {
     if (!deleteDialog) return
     setDeleting(true)
-    const supabase = createSupabaseClient()
-    const { error } = await supabase.from('clients').delete().eq('id', deleteDialog.id)
-    if (error) { toast.error(error.message); setDeleting(false); return }
-    setClients(prev => prev.filter(c => c.id !== deleteDialog.id))
-    setDeleteDialog(null)
+    try {
+      await api.clients.delete(deleteDialog.id)
+      setClients(prev => prev.filter(c => c.id !== deleteDialog.id))
+      setDeleteDialog(null)
+      toast.success('Client deleted')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete client')
+    }
     setDeleting(false)
-    toast.success('Client deleted')
   }
 
   const columns: ColumnDef<Client>[] = [

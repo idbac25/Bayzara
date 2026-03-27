@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import * as api from '@/lib/api'
 import { useBusiness } from '@/contexts/BusinessContext'
 import { DataTable } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -72,60 +72,52 @@ export function InvoicesClient({ invoices: initial, currency, businessId, slug }
 
   const handleSoftDelete = async (inv: InvoiceRow) => {
     setDeleting(true)
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('documents')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', inv.id)
-
-    if (error) { toast.error(error.message); setDeleting(false); return }
-    setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: new Date().toISOString() } : i))
-    setDeleteDialog(null)
+    try {
+      await api.invoices.delete(inv.id)
+      setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, deleted_at: new Date().toISOString() } : i))
+      setDeleteDialog(null)
+      toast.success('Invoice moved to trash')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete invoice')
+    }
     setDeleting(false)
-    toast.success('Invoice moved to trash')
   }
 
   const handleDuplicate = async (inv: InvoiceRow) => {
-    const supabase = createClient()
-    const { data: original } = await supabase
-      .from('documents')
-      .select('*, line_items(*)')
-      .eq('id', inv.id)
-      .single()
+    try {
+      const { invoice: original, payments: _ } = await api.invoices.get(inv.id)
+      const lineItems = (original.line_items ?? []).map((li, i) => ({
+        name: li.name,
+        description: li.description ?? null,
+        sku: li.sku ?? null,
+        quantity: li.quantity,
+        rate: li.rate,
+        unit: li.unit,
+        tax_rate: li.tax_rate,
+        discount_percentage: li.discount_percentage,
+        sort_order: li.sort_order ?? i,
+      }))
 
-    if (!original) return
-
-    // Get next document number
-    const { data: seqData } = await supabase
-      .rpc('get_next_document_number', { p_business_id: businessId, p_type: 'invoice' })
-
-    const { data: newDoc } = await supabase
-      .from('documents')
-      .insert({
-        ...original,
-        id: undefined,
-        document_number: seqData,
-        status: 'draft',
+      const newDoc = await api.invoices.create(slug, {
+        client_id: original.client_id,
+        title: original.title,
         date: new Date().toISOString().split('T')[0],
-        amount_paid: 0,
-        amount_due: original.total,
-        pdf_url: null,
-        public_token: undefined,
-        created_at: undefined,
-        updated_at: undefined,
-        deleted_at: null,
+        due_date: null,
+        currency: original.currency,
+        notes: original.notes,
+        terms: original.terms,
+        bank_details: original.bank_details as Record<string, unknown> | null,
+        discount_type: original.discount_type as 'percent' | 'fixed',
+        discount_value: original.discount_value,
+        additional_charges: original.additional_charges,
+        line_items: lineItems,
       })
-      .select()
-      .single()
 
-    if (newDoc && original.line_items) {
-      await supabase.from('line_items').insert(
-        original.line_items.map((li: Record<string, unknown>) => ({ ...li, id: undefined, document_id: newDoc.id }))
-      )
+      toast.success('Invoice duplicated')
+      router.push(`/app/${slug}/invoices/${newDoc.id}/edit`)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to duplicate invoice')
     }
-
-    toast.success('Invoice duplicated')
-    router.push(`/app/${slug}/invoices/${newDoc?.id}/edit`)
   }
 
   const columns: ColumnDef<InvoiceRow>[] = [
