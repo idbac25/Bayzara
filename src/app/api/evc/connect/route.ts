@@ -11,11 +11,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Step 1: Login to Hormud
+    // Step 1: Login to Hormud — field names are userName / password (camelCase)
     const loginRes = await fetch(`${HORMUD_API}/account/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ userName: username, password }),
     })
 
     let loginData: Record<string, unknown> = {}
@@ -30,17 +30,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // DEBUG — remove after diagnosing
-    console.log('Hormud login response:', JSON.stringify(loginData))
-
-    const resultCode = String(loginData.resultCode ?? loginData.ResultCode ?? loginData.result_code ?? loginData.code ?? loginData.Code ?? '')
-    const isSuccess = resultCode === '2001' || loginData.token || loginData.Token || loginData.sessionId || loginData.SessionId
+    const resultCode = String(
+      loginData.resultCode ?? loginData.ResultCode ?? loginData.result_code ?? loginData.code ?? loginData.Code ?? ''
+    )
+    const isSuccess =
+      resultCode === '2001' ||
+      !!loginData.token || !!loginData.Token ||
+      !!loginData.sessionId || !!loginData.SessionId
 
     if (!isSuccess) {
-      return NextResponse.json(
-        { error: `Hormud raw response: ${rawText.slice(0, 500)}` },
-        { status: 401 }
-      )
+      const msg =
+        (loginData.replyMessage as string) ??
+        (loginData.resultDescription as string) ??
+        (loginData.message as string) ??
+        rawText.slice(0, 200)
+      return NextResponse.json({ error: msg || 'Login failed' }, { status: 401 })
     }
 
     const sessionId = loginData.sessionId ?? loginData.SessionId
@@ -62,27 +66,39 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ sessionId }),
     })
 
-    const balanceData = await balanceRes.json()
-    const currentBalance = parseFloat(balanceData.currentBalance ?? balanceData.CurrentBalance ?? '0')
-    const merchantName = balanceData.accountTitle ?? balanceData.AccountTitle ?? username
-    const accountId = balanceData.accountId ?? balanceData.AccountId ?? ''
+    let balanceData: Record<string, unknown> = {}
+    try { balanceData = await balanceRes.json() } catch { /* ignore */ }
+
+    const currentBalance = parseFloat(
+      String(balanceData.currentBalance ?? balanceData.CurrentBalance ?? '0')
+    )
+    const merchantName =
+      (balanceData.accountTitle as string) ??
+      (balanceData.AccountTitle as string) ??
+      username
+    const accountId =
+      String(balanceData.accountId ?? balanceData.AccountId ?? '')
 
     // Step 3: Get transactions to extract account details
-    const txRes = await fetch(`${HORMUD_API}/account/transactions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: `_cyc=${sessionCookie}`,
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ sessionId }),
-    })
+    let firstTx: Record<string, unknown> = {}
+    try {
+      const txRes = await fetch(`${HORMUD_API}/account/transactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: `_cyc=${sessionCookie}`,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ sessionId }),
+      })
+      const txData: Record<string, unknown> = await txRes.json()
+      const txList = (txData.transactionInfo ?? txData.TransactionInfo) as unknown[]
+      firstTx = (txList?.[0] as Record<string, unknown>) ?? {}
+    } catch { /* ignore if transactions fail */ }
 
-    const txData = await txRes.json()
-    const firstTx = txData.transactionInfo?.[0]
-    const subscriptionId = firstTx?.sender ?? username
-    const partnerUid = firstTx?.receiver ?? ''
-    const accountNumber = loginData.accountNumber ?? loginData.AccountNumber ?? subscriptionId
+    const subscriptionId = String(firstTx.sender ?? loginData.accountNumber ?? loginData.AccountNumber ?? username)
+    const partnerUid = String(firstTx.receiver ?? '')
+    const accountNumber = String(loginData.accountNumber ?? loginData.AccountNumber ?? subscriptionId)
 
     // Step 4: Store in Supabase (pending activation)
     const supabase = await createClient()
@@ -100,11 +116,11 @@ export async function POST(request: NextRequest) {
         session_token: token,
         session_cookie: sessionCookie,
         session_expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-        encrypted_username: username, // In production: encrypt with pgcrypto
-        encrypted_password: password, // In production: encrypt with pgcrypto
+        encrypted_username: username,
+        encrypted_password: password,
         current_balance: currentBalance,
         balance_updated_at: new Date().toISOString(),
-        is_active: false, // Activated on confirm step
+        is_active: false,
         sync_enabled: true,
       })
       .select()
