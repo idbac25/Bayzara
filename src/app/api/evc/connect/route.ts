@@ -11,11 +11,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Step 1: Login to Hormud — field names are userName / password (camelCase)
+    // Step 1: Login to Hormud — try form-encoded with userName/password
+    const formBody = new URLSearchParams({ userName: username, password })
     const loginRes = await fetch(`${HORMUD_API}/account/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userName: username, password }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody.toString(),
     })
 
     let loginData: Record<string, unknown> = {}
