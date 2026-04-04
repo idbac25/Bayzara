@@ -46,7 +46,7 @@ export default async function POSPage({ params }: Props) {
   // Load active EVC connections
   const { data: evcConnections } = await supabase
     .from('evc_connections')
-    .select('id, merchant_name, account_number, current_balance, is_active')
+    .select('id, merchant_name, merchant_number, current_balance, is_active')
     .eq('business_id', business.id)
     .eq('is_active', true)
 

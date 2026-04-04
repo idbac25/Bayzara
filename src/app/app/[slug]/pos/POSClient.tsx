@@ -44,7 +44,7 @@ interface POSClient {
 interface EvcConnection {
   id: string
   merchant_name: string
-  account_number: string
+  merchant_number: string
   current_balance: number
   is_active: boolean
 }
@@ -587,7 +587,7 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
                     onChange={e => setSelectedEvc(evcConnections.find(c => c.id === e.target.value) ?? null)}
                   >
                     {evcConnections.map(c => (
-                      <option key={c.id} value={c.id}>{c.merchant_name} ({c.account_number})</option>
+                      <option key={c.id} value={c.id}>{c.merchant_name} ({c.merchant_number})</option>
                     ))}
                   </select>
                 </div>
