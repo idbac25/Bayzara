@@ -3,13 +3,16 @@
 import { useBusiness } from '@/contexts/BusinessContext'
 import { DataTable } from '@/components/shared/DataTable'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/lib/utils'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useState } from 'react'
-import { CheckCircle, AlertTriangle, Clock, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { CheckCircle, AlertTriangle, Clock, ArrowDownLeft, ArrowUpRight, RotateCcw, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface EvcTx {
   id: string
@@ -33,6 +36,39 @@ interface Props {
 export function EVCTransactionsClient({ transactions, slug }: Props) {
   const { business } = useBusiness()
   const [tab, setTab] = useState<'all' | 'review'>('all')
+  const [refundTarget, setRefundTarget] = useState<EvcTx | null>(null)
+  const [refundPin, setRefundPin] = useState('')
+  const [refunding, setRefunding] = useState(false)
+
+  const handleRefund = async () => {
+    if (!refundTarget || !refundPin) return
+    setRefunding(true)
+    try {
+      const res = await fetch('/api/evc/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id:    business.id,
+          transaction_id: refundTarget.tran_id,
+          amount:         refundTarget.amount,
+          description:    'refund',
+          pin:            refundPin,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Refund failed')
+      } else {
+        toast.success('Refund sent successfully')
+        setRefundTarget(null)
+        setRefundPin('')
+      }
+    } catch {
+      toast.error('Failed to process refund')
+    } finally {
+      setRefunding(false)
+    }
+  }
 
   const filtered = tab === 'review'
     ? transactions.filter(t => t.needs_review)
@@ -127,6 +163,28 @@ export function EVCTransactionsClient({ transactions, slug }: Props) {
         <span className="text-xs font-mono text-muted-foreground">{String(getValue())}</span>
       ),
     },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => {
+        const tx = row.original
+        // Only inbound, non-refunded transactions can be refunded
+        if (tx.direction !== 'in') return null
+        if (String(tx.description ?? '').startsWith('[REFUNDED]')) return (
+          <span className="text-xs text-muted-foreground italic">Refunded</span>
+        )
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+            onClick={() => { setRefundTarget(tx); setRefundPin('') }}
+          >
+            <RotateCcw className="h-3 w-3 mr-1" />Refund
+          </Button>
+        )
+      },
+    },
   ]
 
   const reviewCount = transactions.filter(t => t.needs_review).length
@@ -161,6 +219,54 @@ export function EVCTransactionsClient({ transactions, slug }: Props) {
         columns={columns}
         searchPlaceholder="Search transactions..."
       />
+
+      {/* Refund dialog */}
+      <Dialog open={!!refundTarget} onOpenChange={open => { if (!open) setRefundTarget(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Refund Transaction</DialogTitle>
+          </DialogHeader>
+          {refundTarget && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="font-semibold text-red-600">{formatCurrency(refundTarget.amount, 'USD')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">From</span>
+                  <span>{refundTarget.sender_name ?? refundTarget.sender_phone ?? '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tran ID</span>
+                  <span className="font-mono text-xs">{refundTarget.tran_id}</span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="refund-pin">Admin PIN</Label>
+                <Input
+                  id="refund-pin"
+                  type="password"
+                  placeholder="Enter your EVC admin PIN"
+                  value={refundPin}
+                  onChange={e => setRefundPin(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleRefund()}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={handleRefund}
+              disabled={!refundPin || refunding}
+            >
+              {refunding ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Processing…</> : 'Confirm Refund'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
