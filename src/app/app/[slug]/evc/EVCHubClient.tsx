@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -9,12 +9,15 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   Zap, Plus, RefreshCw, AlertTriangle, CheckCircle,
-  Calendar, DollarSign, Eye, Trash2
+  Calendar, DollarSign, Eye, Trash2, Send, Loader2, UserCheck
 } from 'lucide-react'
 
 interface EVCConnection {
@@ -34,6 +37,7 @@ interface EVCTransaction {
   direction: string
   sender_name: string | null
   sender_phone: string | null
+  receiver_phone: string | null
   tran_date: string
   is_recorded: boolean
   needs_review: boolean
@@ -52,12 +56,71 @@ interface Props {
   slug: string
 }
 
-export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: Props) {
+export function EVCHubClient({ connections, recentTxs, stats, slug }: Props) {
   const { business } = useBusiness()
   const router = useRouter()
-  const [connections, setConnections] = useState(initial)
   const [disconnectTarget, setDisconnectTarget] = useState<EVCConnection | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [sendConn, setSendConn] = useState<EVCConnection | null>(null)
+  const [sendForm, setSendForm] = useState({ phone: '', amount: '', description: '', pin: '' })
+  const [sendLookup, setSendLookup] = useState<{ name: string } | null>(null)
+  const [sendLooking, setSendLooking] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  const lookupPhone = async () => {
+    if (!sendConn || !sendForm.phone) return
+    setSendLooking(true)
+    setSendLookup(null)
+    try {
+      const res = await fetch('/api/evc/find', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_id: business.id, phone: sendForm.phone }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || 'Account not found'); return }
+      setSendLookup({ name: data.name })
+    } finally {
+      setSendLooking(false)
+    }
+  }
+
+  const handleSend = async () => {
+    if (!sendConn || !sendForm.phone || !sendForm.amount || !sendForm.pin) {
+      toast.error('Fill in all required fields')
+      return
+    }
+    setSending(true)
+    try {
+      const res = await fetch('/api/evc/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id:    business.id,
+          receiver_phone: sendForm.phone,
+          receiver_name:  sendLookup?.name ?? '',
+          amount:         parseFloat(sendForm.amount),
+          description:    sendForm.description || 'refund',
+          pin:            sendForm.pin,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error || 'Transfer failed'); return }
+      toast.success(`Sent ${formatCurrency(parseFloat(sendForm.amount), 'USD')} to ${sendLookup?.name ?? sendForm.phone}`)
+      setSendConn(null)
+      setSendForm({ phone: '', amount: '', description: '', pin: '' })
+      setSendLookup(null)
+      router.refresh()
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // Poll every 5 seconds so new transactions appear automatically
+  useEffect(() => {
+    const interval = setInterval(() => router.refresh(), 5000)
+    return () => clearInterval(interval)
+  }, [router])
 
   const handleDisconnect = async () => {
     if (!disconnectTarget) return
@@ -69,7 +132,6 @@ export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: P
       setDisconnecting(false)
       return
     }
-    setConnections(prev => prev.filter(c => c.id !== disconnectTarget.id))
     setDisconnectTarget(null)
     setDisconnecting(false)
     toast.success(`"${disconnectTarget.merchant_name}" disconnected`)
@@ -202,14 +264,24 @@ export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: P
                             {formatCurrency(conn.current_balance, 'USD')}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
-                          onClick={() => setDisconnectTarget(conn)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1" />Disconnect
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs px-2"
+                            onClick={() => { setSendConn(conn); setSendForm({ phone: '', amount: '', description: '', pin: '' }); setSendLookup(null) }}
+                          >
+                            <Send className="h-3.5 w-3.5 mr-1" />Send
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 px-2"
+                            onClick={() => setDisconnectTarget(conn)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-1" />Disconnect
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -242,7 +314,9 @@ export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: P
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium">
-                            {tx.sender_name ?? tx.sender_phone ?? 'Unknown Sender'}
+                            {tx.direction === 'out'
+                              ? ((tx as EVCTransaction & { receiver_name?: string }).receiver_name ?? tx.receiver_phone ?? 'Sent')
+                              : (tx.sender_name ?? tx.sender_phone ?? 'Unknown')}
                           </p>
                           {tx.needs_review && (
                             <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">
@@ -260,8 +334,8 @@ export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: P
                           <p className="text-xs text-muted-foreground truncate max-w-[280px]">{tx.description}</p>
                         )}
                       </div>
-                      <span className={`font-semibold ${tx.direction === 'inbound' ? 'text-[#27AE60]' : 'text-[#E74C3C]'}`}>
-                        {tx.direction === 'inbound' ? '+' : '-'}{formatCurrency(tx.amount, 'USD')}
+                      <span className={`font-semibold ${tx.direction === 'in' ? 'text-[#27AE60]' : 'text-[#E74C3C]'}`}>
+                        {tx.direction === 'in' ? '+' : '-'}{formatCurrency(tx.amount, 'USD')}
                       </span>
                     </div>
                   ))}
@@ -281,6 +355,76 @@ export function EVCHubClient({ connections: initial, recentTxs, stats, slug }: P
         loading={disconnecting}
         onConfirm={handleDisconnect}
       />
+
+      {/* Send Money Modal */}
+      <Dialog open={!!sendConn} onOpenChange={o => !o && setSendConn(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-[#F5A623]" />
+              Send Money via EVC Plus
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs">Recipient Phone *</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  placeholder="619xxxxxx"
+                  value={sendForm.phone}
+                  onChange={e => { setSendForm(f => ({ ...f, phone: e.target.value })); setSendLookup(null) }}
+                  className="h-9"
+                />
+                <Button variant="outline" size="sm" className="h-9 shrink-0" onClick={lookupPhone} disabled={sendLooking || !sendForm.phone}>
+                  {sendLooking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Verify'}
+                </Button>
+              </div>
+              {sendLookup && (
+                <p className="text-xs text-[#27AE60] flex items-center gap-1 mt-1">
+                  <UserCheck className="h-3 w-3" />{sendLookup.name}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs">Amount (USD) *</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={sendForm.amount}
+                onChange={e => setSendForm(f => ({ ...f, amount: e.target.value }))}
+                className="h-9 mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Description</Label>
+              <Input
+                placeholder="Refund, payment, etc."
+                value={sendForm.description}
+                onChange={e => setSendForm(f => ({ ...f, description: e.target.value }))}
+                className="h-9 mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">EVC PIN *</Label>
+              <Input
+                type="password"
+                placeholder="••••"
+                value={sendForm.pin}
+                onChange={e => setSendForm(f => ({ ...f, pin: e.target.value }))}
+                className="h-9 mt-1"
+              />
+            </div>
+            <Button
+              className="w-full bg-[#F5A623] hover:bg-[#e09520] text-black font-semibold"
+              onClick={handleSend}
+              disabled={sending || !sendForm.phone || !sendForm.amount || !sendForm.pin}
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              {sending ? 'Sending...' : 'Send Money'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

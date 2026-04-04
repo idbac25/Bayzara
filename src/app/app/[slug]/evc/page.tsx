@@ -25,7 +25,7 @@ export default async function EVCPage({ params }: Props) {
     .from('evc_transactions')
     .select('*')
     .eq('business_id', business?.id)
-    .order('tran_date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(20)
 
   // Stats
@@ -36,14 +36,14 @@ export default async function EVCPage({ params }: Props) {
     .from('evc_transactions')
     .select('amount')
     .eq('business_id', business?.id)
-    .eq('direction', 'inbound')
+    .eq('direction', 'in')
     .gte('tran_date', today)
 
   const { data: monthTxs } = await supabase
     .from('evc_transactions')
     .select('amount')
     .eq('business_id', business?.id)
-    .eq('direction', 'inbound')
+    .eq('direction', 'in')
     .gte('tran_date', monthStart)
 
   const stats = {

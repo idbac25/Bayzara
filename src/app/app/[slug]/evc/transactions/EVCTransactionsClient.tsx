@@ -51,7 +51,7 @@ export function EVCTransactionsClient({ transactions, slug }: Props) {
       header: 'Direction',
       cell: ({ getValue }) => {
         const dir = String(getValue())
-        return dir === 'inbound' ? (
+        return dir === 'in' ? (
           <span className="flex items-center gap-1 text-[#27AE60] text-sm font-medium">
             <ArrowDownLeft className="h-3.5 w-3.5" />Inbound
           </span>
@@ -66,22 +66,29 @@ export function EVCTransactionsClient({ transactions, slug }: Props) {
       accessorKey: 'amount',
       header: 'Amount',
       cell: ({ row }) => (
-        <span className={`font-semibold ${row.original.direction === 'inbound' ? 'text-[#27AE60]' : 'text-[#E74C3C]'}`}>
-          {row.original.direction === 'inbound' ? '+' : '-'}{formatCurrency(row.original.amount, 'USD')}
+        <span className={`font-semibold ${row.original.direction === 'in' ? 'text-[#27AE60]' : 'text-[#E74C3C]'}`}>
+          {row.original.direction === 'in' ? '+' : '-'}{formatCurrency(row.original.amount, 'USD')}
         </span>
       ),
     },
     {
       id: 'sender',
-      header: 'Sender',
-      cell: ({ row }) => (
-        <div>
-          <p className="text-sm font-medium">{row.original.sender_name ?? '—'}</p>
-          {row.original.sender_phone && (
-            <p className="text-xs text-muted-foreground">{row.original.sender_phone}</p>
-          )}
-        </div>
-      ),
+      header: 'From / To',
+      cell: ({ row }) => {
+        const tx = row.original
+        if (tx.direction === 'out') return (
+          <div>
+            <p className="text-xs text-muted-foreground">To</p>
+            <p className="text-sm font-medium">{(tx as EvcTx & { receiver_name?: string; receiver_phone?: string }).receiver_name ?? (tx as EvcTx & { receiver_phone?: string }).receiver_phone ?? '—'}</p>
+          </div>
+        )
+        return (
+          <div>
+            <p className="text-sm font-medium">{tx.sender_name ?? '—'}</p>
+            {tx.sender_phone && <p className="text-xs text-muted-foreground">{tx.sender_phone}</p>}
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'description',

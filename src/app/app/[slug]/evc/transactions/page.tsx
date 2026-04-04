@@ -19,7 +19,7 @@ export default async function EVCTransactionsPage({ params }: Props) {
     .from('evc_transactions')
     .select('*, evc_connections(merchant_name)')
     .eq('business_id', business?.id)
-    .order('tran_date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(200)
 
   return <EVCTransactionsClient transactions={transactions ?? []} slug={slug} />
