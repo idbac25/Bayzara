@@ -6,10 +6,10 @@ import { usePathname } from 'next/navigation'
 import { useBusiness, useFeature } from '@/contexts/BusinessContext'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Users, FileText, Receipt, ShoppingCart, Truck,
+  LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
   CreditCard, Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, UserCheck, FileCheck, FileX, FileOutput,
-  BarChart3, Kanban, X, Monitor
+  BarChart3, Kanban, X, Monitor, UserRound
 } from 'lucide-react'
 
 interface NavItem {
@@ -36,6 +36,7 @@ function buildNav(slug: string, hasEvc: boolean, hasPos: boolean): NavSection[] 
       title: 'SALES',
       items: [
         ...(hasPos ? [{ label: 'POS', href: `${base}/pos`, icon: Monitor }] : []),
+        ...(hasPos ? [{ label: 'Customers', href: `${base}/customers`, icon: UserRound }] : []),
         { label: 'Clients', href: `${base}/clients`, icon: Users },
         { label: 'Quotations', href: `${base}/quotations`, icon: FileText },
         { label: 'Invoices', href: `${base}/invoices`, icon: Receipt },

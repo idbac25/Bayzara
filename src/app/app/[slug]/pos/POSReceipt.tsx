@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Printer, X, ArrowRight } from 'lucide-react'
@@ -41,11 +41,8 @@ interface Props {
 }
 
 export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
-  useEffect(() => {
-    // Auto-print after a short delay
-    const t = setTimeout(() => window.print(), 600)
-    return () => clearTimeout(t)
-  }, [])
+  // Receipt does not auto-print — cashier reviews and clicks Print manually
+  // (printing before payment match confirmation would produce a blank/premature receipt)
 
   const methodLabel: Record<string, string> = {
     cash: 'Cash',

@@ -19,6 +19,7 @@ interface SalePayload {
   payment_method: 'cash' | 'evc' | 'credit'
   customer_id?: string | null
   evc_tran_id?: string | null
+  evc_tx_uuid?: string | null
   evc_connection_id?: string | null
   evc_sender_name?: string | null
   evc_sender_phone?: string | null
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body: SalePayload = await req.json()
-  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_connection_id, evc_sender_name, evc_sender_phone } = body
+  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_tx_uuid, evc_connection_id, evc_sender_name, evc_sender_phone } = body
 
   if (!slug || !line_items?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
-  // If no customer selected but we have an EVC phone, try to match an existing client
+  // If no customer selected but we have an EVC phone, try to match an existing B2B client
   let resolvedCustomerId = customer_id ?? null
   if (!resolvedCustomerId && evc_sender_phone) {
     const localPhone = evc_sender_phone.replace(/^(252|\+252)/, '')
@@ -61,6 +62,31 @@ export async function POST(req: NextRequest) {
       .or(`evc_phone.eq.${localPhone},phone.eq.${localPhone},phone.eq.252${localPhone}`)
       .maybeSingle()
     if (matchedClient) resolvedCustomerId = matchedClient.id
+  }
+
+  // Resolve retail pos_customer from EVC sender phone (primary or alternative number)
+  let posCustomerId: string | null = null
+  if (evc_sender_phone && payment_method === 'evc') {
+    // Check primary phones
+    const { data: primary } = await supabase
+      .from('pos_customers')
+      .select('id')
+      .eq('business_id', business.id)
+      .eq('primary_phone', evc_sender_phone)
+      .maybeSingle()
+
+    if (primary) {
+      posCustomerId = primary.id
+    } else {
+      // Check alternative phones
+      const { data: alt } = await supabase
+        .from('customer_phones')
+        .select('customer_id')
+        .eq('business_id', business.id)
+        .eq('phone', evc_sender_phone)
+        .maybeSingle()
+      if (alt) posCustomerId = alt.customer_id
+    }
   }
 
   // Get credit terms if credit sale
@@ -112,6 +138,7 @@ export async function POST(req: NextRequest) {
       date: today,
       due_date: dueDate,
       client_id: resolvedCustomerId,
+      pos_customer_id: posCustomerId,
       status: 'sent',
       currency: business.currency,
       subtotal,
@@ -121,6 +148,9 @@ export async function POST(req: NextRequest) {
       amount_due: total,
       title: evc_sender_name ? `POS Sale – ${evc_sender_name}` : 'POS Sale',
       source: 'pos',
+      payment_method,
+      evc_sender_phone: evc_sender_phone ?? null,
+      evc_sender_name: evc_sender_name ?? null,
       ...(evc_sender_phone ? { notes: `EVC: ${evc_sender_name ?? ''} ${evc_sender_phone}`.trim() } : {}),
     })
     .select()
@@ -182,7 +212,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: payError.message }, { status: 500 })
     }
 
+    // Mark the matched EVC transaction as recorded and link it to this sale
+    if (evc_tx_uuid) {
+      await supabase
+        .from('evc_transactions')
+        .update({
+          is_recorded:     true,
+          matched_sale_id: doc.id,
+          matched_at:      new Date().toISOString(),
+          document_id:     doc.id,
+        })
+        .eq('id', evc_tx_uuid)
+        .eq('business_id', business.id)
+    }
+
+    // Upsert pos_customer atomically (create or increment stats) then link to document
+    if (evc_sender_phone && evc_sender_name) {
+      const { data: customerId } = await supabase.rpc('upsert_pos_customer_sale', {
+        p_business_id: business.id,
+        p_phone:       evc_sender_phone,
+        p_name:        evc_sender_name,
+        p_amount:      total,
+      })
+      if (customerId) {
+        await supabase
+          .from('documents')
+          .update({ pos_customer_id: customerId })
+          .eq('id', doc.id)
+      }
+    }
+
     // Deduct stock for tracked inventory items
+    for (const item of line_items) {
+      if (item.inventory_item_id) {
+        await supabase.rpc('decrement_stock', {
+          p_item_id: item.inventory_item_id,
+          p_qty: item.quantity,
+        }).maybeSingle()
+      }
+    }
+  } else {
+    // Credit — deduct stock
     for (const item of line_items) {
       if (item.inventory_item_id) {
         await supabase.rpc('decrement_stock', {

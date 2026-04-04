@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { POSPaymentOverlay } from './POSPaymentOverlay'
+import { POSPaymentOverlay, type SenderInfo } from './POSPaymentOverlay'
 import { POSReceipt } from './POSReceipt'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, ArrowLeft,
@@ -100,6 +100,7 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
   const [selectedEvc, setSelectedEvc] = useState<EvcConnection | null>(evcConnections[0] ?? null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [showEvcOverlay, setShowEvcOverlay] = useState(false)
+  const [evcInitiatedAt, setEvcInitiatedAt] = useState<Date | null>(null)
   const [pendingEvcTranId, setPendingEvcTranId] = useState<string | null>(null)
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -172,11 +173,12 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     setCustomerSearch('')
     setPaymentMethod('cash')
     setPendingEvcTranId(null)
+    setEvcInitiatedAt(null)
   }
 
   // ── Sale completion ────────────────────────────────────────────────────────
 
-  const buildSalePayload = (evcTranId?: string, senderName?: string | null, senderPhone?: string | null) => ({
+  const buildSalePayload = (evcTranId?: string, txUuid?: string, senderName?: string | null, senderPhone?: string | null) => ({
     slug: business.slug,
     line_items: cart.map(ci => ({
       name: ci.item.name,
@@ -190,18 +192,19 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     payment_method: paymentMethod,
     customer_id: customer?.id ?? null,
     evc_tran_id: evcTranId ?? null,
+    evc_tx_uuid: txUuid ?? null,
     evc_connection_id: selectedEvc?.id ?? null,
     evc_sender_name: senderName ?? null,
     evc_sender_phone: senderPhone ?? null,
   })
 
-  const submitSale = async (evcTranId?: string, senderName?: string | null, senderPhone?: string | null) => {
+  const submitSale = async (evcTranId?: string, txUuid?: string, senderName?: string | null, senderPhone?: string | null) => {
     setIsProcessing(true)
     try {
       const res = await fetch('/api/pos/sale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildSalePayload(evcTranId, senderName, senderPhone)),
+        body: JSON.stringify(buildSalePayload(evcTranId, txUuid, senderName, senderPhone)),
       })
       const data = await res.json()
 
@@ -252,6 +255,7 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
         toast.error('No EVC connection available')
         return
       }
+      setEvcInitiatedAt(new Date())
       setShowEvcOverlay(true)
       return
     }
@@ -259,10 +263,10 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     await submitSale()
   }
 
-  const handleEvcConfirmed = async ({ tranId, senderName, senderPhone }: { tranId: string; senderName: string | null; senderPhone: string | null }) => {
+  const handleEvcConfirmed = async ({ tranId, txUuid, senderName, senderPhone }: SenderInfo) => {
     setShowEvcOverlay(false)
     setPendingEvcTranId(tranId)
-    await submitSale(tranId, senderName, senderPhone)
+    await submitSale(tranId, txUuid, senderName, senderPhone)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -611,13 +615,14 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
       </div>
 
       {/* EVC payment overlay */}
-      {showEvcOverlay && (
+      {showEvcOverlay && evcInitiatedAt && (
         <POSPaymentOverlay
           businessId={business.id}
           expectedAmount={total}
           currency={business.currency}
+          initiatedAt={evcInitiatedAt}
           onConfirmed={handleEvcConfirmed}
-          onCancel={() => setShowEvcOverlay(false)}
+          onCancel={() => { setShowEvcOverlay(false); setEvcInitiatedAt(null) }}
         />
       )}
 

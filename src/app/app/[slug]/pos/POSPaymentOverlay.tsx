@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
-import { Loader2, CheckCircle2, X, Zap } from 'lucide-react'
+import { Loader2, X, Zap, CheckCircle2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import type { ScoredTransaction } from '@/lib/evc-score'
 
-interface SenderInfo {
+export interface SenderInfo {
   tranId: string
+  txUuid: string
   senderName: string | null
   senderPhone: string | null
 }
@@ -16,144 +18,256 @@ interface Props {
   businessId: string
   expectedAmount: number
   currency: string
+  initiatedAt: Date
   onConfirmed: (info: SenderInfo) => void
   onCancel: () => void
 }
 
-type Status = 'waiting' | 'confirmed'
+type ViewState = 'loading' | 'empty' | 'list' | 'matched'
 
-export function POSPaymentOverlay({ businessId, expectedAmount, currency, onConfirmed, onCancel }: Props) {
-  const [status, setStatus] = useState<Status>('waiting')
-  const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null)
-  const [dots, setDots] = useState(0)
-  const sinceRef = useRef(new Date().toISOString())
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const supabase = createClient()
+const POLL_INTERVAL = 5000
 
-  // Animate waiting dots
-  useEffect(() => {
-    const t = setInterval(() => setDots(d => (d + 1) % 4), 600)
-    return () => clearInterval(t)
-  }, [])
+const CONFIDENCE_STYLES: Record<string, string> = {
+  high:   'bg-green-100 text-green-700 border-green-200',
+  medium: 'bg-amber-100 text-amber-700 border-amber-200',
+  low:    'bg-gray-100 text-gray-500 border-gray-200',
+}
 
-  // Supabase Realtime subscription — instant path
-  useEffect(() => {
-    const channel = supabase
-      .channel(`pos-evc-${businessId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'evc_transactions',
-          filter: `business_id=eq.${businessId}`,
-        },
-        (payload) => {
-          const tx = payload.new as { amount: number; direction: string; tran_id: string; is_recorded: boolean; sender_name: string | null; sender_phone: string | null }
-          if (
-            tx.direction === 'in' &&
-            !tx.is_recorded &&
-            Math.abs(tx.amount - expectedAmount) <= 0.5
-          ) {
-            handleConfirmed({ tranId: String(tx.tran_id), senderName: tx.sender_name ?? null, senderPhone: tx.sender_phone ?? null })
-          }
-        }
-      )
-      .subscribe()
+const CONFIDENCE_LABELS: Record<string, string> = {
+  high:   'Best match',
+  medium: 'Possible',
+  low:    'Unlikely',
+}
 
-    return () => { supabase.removeChannel(channel) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessId, expectedAmount])
+function formatAge(secondsAgo: number): string {
+  const abs = Math.abs(Math.round(secondsAgo))
+  if (abs < 60) return `${abs}s ago`
+  return `${Math.floor(abs / 60)}m ${abs % 60}s ago`
+}
 
-  // 3-second polling — fallback path
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const res = await fetch('/api/evc/poll', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            business_id: businessId,
-            expected_amount: expectedAmount,
-            since: sinceRef.current,
-          }),
-        })
-        const data = await res.json()
-        if (data.found && data.transaction) {
-          handleConfirmed({
-            tranId: String(data.transaction.tran_id ?? data.transaction.id),
-            senderName: data.transaction.sender_name ?? null,
-            senderPhone: data.transaction.sender_phone ?? null,
-          })
-        }
-      } catch { /* non-fatal */ }
+export function POSPaymentOverlay({
+  businessId,
+  expectedAmount,
+  currency,
+  initiatedAt,
+  onConfirmed,
+  onCancel,
+}: Props) {
+  const [view, setView] = useState<ViewState>('loading')
+  const [transactions, setTransactions] = useState<ScoredTransaction[]>([])
+  const [matchedTx, setMatchedTx] = useState<ScoredTransaction | null>(null)
+  const [countdown, setCountdown] = useState(POLL_INTERVAL / 1000)
+  const [matchingId, setMatchingId] = useState<string | null>(null)
+  const pollTimer   = useRef<ReturnType<typeof setInterval> | null>(null)
+  const countTimer  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const confirmedRef = useRef(false)
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        business_id:     businessId,
+        expected_amount: String(expectedAmount),
+        initiated_at:    initiatedAt.toISOString(),
+      })
+      const res  = await fetch(`/api/evc/recent-transactions?${params}`)
+      const data = await res.json()
+
+      if (data.transactions?.length > 0) {
+        setTransactions(data.transactions)
+        setView('list')
+      } else {
+        setView(prev => prev === 'loading' ? 'empty' : prev === 'list' ? 'list' : 'empty')
+      }
+    } catch {
+      // non-fatal — keep showing whatever state we're in
     }
+    setCountdown(POLL_INTERVAL / 1000)
+  }, [businessId, expectedAmount, initiatedAt])
 
-    intervalRef.current = setInterval(poll, 3000)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [businessId, expectedAmount])
+  // Initial fetch + polling
+  useEffect(() => {
+    fetchTransactions()
+    pollTimer.current  = setInterval(fetchTransactions, POLL_INTERVAL)
+    countTimer.current = setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000)
+    return () => {
+      if (pollTimer.current)  clearInterval(pollTimer.current)
+      if (countTimer.current) clearInterval(countTimer.current)
+    }
+  }, [fetchTransactions])
 
-  const handleConfirmed = (info: SenderInfo) => {
-    if (status === 'confirmed') return
-    setStatus('confirmed')
-    setSenderInfo(info)
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    setTimeout(() => onConfirmed(info), 1200)
+  const handleMatch = (tx: ScoredTransaction) => {
+    if (confirmedRef.current) return
+    confirmedRef.current = true
+    setMatchingId(tx.id)
+
+    if (pollTimer.current)  clearInterval(pollTimer.current)
+    if (countTimer.current) clearInterval(countTimer.current)
+
+    setMatchedTx(tx)
+    setView('matched')
+
+    setTimeout(() => {
+      onConfirmed({
+        tranId:      tx.tran_id,
+        txUuid:      tx.id,
+        senderName:  tx.sender_name,
+        senderPhone: tx.sender_phone,
+      })
+    }, 1000)
   }
-
-  const waitingDots = '.'.repeat(dots)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
 
-        {status === 'waiting' ? (
-          <>
-            <div className="bg-[#0F4C81] px-6 py-5 text-white">
-              <div className="flex items-center gap-2 mb-1">
-                <Zap className="h-5 w-5 text-[#F5A623]" />
-                <span className="font-semibold text-lg">EVC Plus Payment</span>
+        {/* Header */}
+        <div className="bg-[#0F4C81] px-5 py-4 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-[#F5A623]" />
+              <span className="font-semibold">EVC Plus Payment</span>
+            </div>
+            {view !== 'matched' && (
+              <button onClick={onCancel} className="text-white/60 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <div className="mt-2">
+            <p className="text-xs text-white/60 uppercase tracking-wide">Amount due</p>
+            <p className="text-3xl font-bold">{formatCurrency(expectedAmount, currency)}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        {view === 'loading' && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin text-[#0F4C81]" />
+            <p className="text-sm">Checking for payments...</p>
+          </div>
+        )}
+
+        {view === 'empty' && (
+          <div className="px-5 py-6">
+            <div className="flex items-center gap-2 text-muted-foreground mb-4">
+              <Loader2 className="h-4 w-4 animate-spin text-[#F5A623]" />
+              <p className="text-sm">Waiting for customer to send payment...</p>
+            </div>
+            <div className="bg-muted/40 rounded-lg px-4 py-3 text-xs text-muted-foreground space-y-1 mb-4">
+              <p>1. Ask the customer to open their EVC Plus app</p>
+              <p>2. Send exactly <strong>{formatCurrency(expectedAmount, currency)}</strong></p>
+              <p>3. Select the matching payment below when it appears</p>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <RefreshCw className="h-3 w-3" />
+                <span>Refreshing in {countdown}s</span>
               </div>
-              <p className="text-white/70 text-sm">Waiting for customer to send payment</p>
+              <button
+                onClick={() => { setCountdown(POLL_INTERVAL / 1000); fetchTransactions() }}
+                className="text-[#0F4C81] hover:underline font-medium"
+              >
+                Refresh now
+              </button>
+            </div>
+            <Button variant="outline" className="w-full mt-4" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        )}
+
+        {view === 'list' && (
+          <div className="flex flex-col max-h-[60vh]">
+            <div className="px-5 pt-4 pb-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Select the matching payment
+              </p>
             </div>
 
-            <div className="px-6 py-8 text-center">
-              <div className="mb-6">
-                <p className="text-xs text-muted-foreground uppercase font-medium mb-1">Amount Due</p>
-                <p className="text-4xl font-bold text-[#0F4C81]">{formatCurrency(expectedAmount, currency)}</p>
-              </div>
+            <div className="overflow-y-auto flex-1 divide-y divide-gray-100">
+              {transactions.map((tx, i) => (
+                <div
+                  key={tx.id}
+                  className={cn(
+                    'px-5 py-3 flex items-center gap-3',
+                    i === 0 && tx.confidence === 'high' && 'bg-green-50/60'
+                  )}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold truncate">
+                        {tx.sender_name ?? 'Unknown sender'}
+                      </p>
+                      <span className={cn(
+                        'text-[10px] font-semibold px-1.5 py-0.5 rounded-full border flex-shrink-0',
+                        CONFIDENCE_STYLES[tx.confidence]
+                      )}>
+                        {CONFIDENCE_LABELS[tx.confidence]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{tx.sender_phone ?? '—'}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-sm font-bold text-[#0F4C81]">
+                        {formatCurrency(tx.amount, currency)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">·</span>
+                      <span className="text-xs text-muted-foreground">{formatAge(tx.secondsAgo)}</span>
+                    </div>
+                  </div>
 
-              <div className="flex items-center justify-center gap-2 text-muted-foreground mb-8">
-                <Loader2 className="h-4 w-4 animate-spin text-[#F5A623]" />
-                <span className="text-sm">Listening for payment{waitingDots}</span>
-              </div>
+                  <Button
+                    size="sm"
+                    className={cn(
+                      'flex-shrink-0 h-8 px-3 text-xs',
+                      i === 0 && tx.confidence === 'high'
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-[#0F4C81] hover:bg-[#0d3d6b] text-white'
+                    )}
+                    disabled={matchingId !== null}
+                    onClick={() => handleMatch(tx)}
+                  >
+                    Match
+                  </Button>
+                </div>
+              ))}
+            </div>
 
-              <div className="bg-muted/40 rounded-lg px-4 py-3 text-xs text-muted-foreground text-left space-y-1 mb-6">
-                <p>1. Ask the customer to open their Hormud EVC app</p>
-                <p>2. Send exactly <strong>{formatCurrency(expectedAmount, currency)}</strong></p>
-                <p>3. This screen will update automatically</p>
+            <div className="px-5 py-3 border-t bg-white">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3" />
+                  <span>Refreshing in {countdown}s</span>
+                </div>
+                <button
+                  onClick={() => { setCountdown(POLL_INTERVAL / 1000); fetchTransactions() }}
+                  className="text-[#0F4C81] hover:underline font-medium"
+                >
+                  Refresh now
+                </button>
               </div>
-
-              <Button variant="outline" className="w-full" onClick={onCancel}>
-                <X className="h-4 w-4 mr-2" />Cancel
+              <Button variant="outline" size="sm" className="w-full mt-2" onClick={onCancel}>
+                Cancel
               </Button>
             </div>
-          </>
-        ) : (
-          <div className="px-6 py-12 text-center">
-            <div className="flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-16 w-16 text-green-500" />
-            </div>
-            <p className="text-2xl font-bold text-green-600 mb-2">Payment Received!</p>
-            <p className="text-muted-foreground text-sm">{formatCurrency(expectedAmount, currency)} confirmed</p>
-            {(senderInfo?.senderName || senderInfo?.senderPhone) && (
-              <div className="mt-3 bg-green-50 rounded-lg px-4 py-2.5 text-sm">
-                {senderInfo.senderName && <p className="font-semibold text-green-800">{senderInfo.senderName}</p>}
-                {senderInfo.senderPhone && <p className="text-green-600 text-xs mt-0.5">{senderInfo.senderPhone}</p>}
+          </div>
+        )}
+
+        {view === 'matched' && matchedTx && (
+          <div className="px-6 py-10 text-center">
+            <CheckCircle2 className="h-14 w-14 text-green-500 mx-auto mb-3" />
+            <p className="text-xl font-bold text-green-700 mb-1">Payment Matched!</p>
+            <p className="text-muted-foreground text-sm">{formatCurrency(matchedTx.amount, currency)}</p>
+            {(matchedTx.sender_name || matchedTx.sender_phone) && (
+              <div className="mt-3 bg-green-50 rounded-lg px-4 py-2.5 text-sm inline-block">
+                {matchedTx.sender_name && (
+                  <p className="font-semibold text-green-800">{matchedTx.sender_name}</p>
+                )}
+                {matchedTx.sender_phone && (
+                  <p className="text-green-600 text-xs mt-0.5">{matchedTx.sender_phone}</p>
+                )}
               </div>
             )}
-            <p className="text-xs text-muted-foreground mt-3">Completing sale...</p>
+            <p className="text-xs text-muted-foreground mt-4">Completing sale...</p>
           </div>
         )}
       </div>

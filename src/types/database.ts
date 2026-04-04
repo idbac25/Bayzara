@@ -316,6 +316,29 @@ export interface Lead {
   updated_at: string
 }
 
+export interface PosCustomer {
+  id: string
+  business_id: string
+  name: string
+  primary_phone: string
+  notes: string | null
+  total_spent: number
+  visit_count: number
+  first_seen_at: string
+  last_seen_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomerPhone {
+  id: string
+  customer_id: string
+  business_id: string
+  phone: string
+  label: string | null
+  added_at: string
+}
+
 export interface Notification {
   id: string
   user_id: string
