@@ -5,10 +5,11 @@ export async function POST(request: NextRequest) {
   const { connection_id, business_id } = await request.json()
   const supabase = await createClient()
 
-  // Activate the connection
+  // Activate the connection — must set status:'active' or the edge function
+  // query (.eq('status','active')) will never match this connection.
   const { error: activateError } = await supabase
     .from('evc_connections')
-    .update({ is_active: true })
+    .update({ is_active: true, status: 'active' })
     .eq('id', connection_id)
     .eq('business_id', business_id)
 
