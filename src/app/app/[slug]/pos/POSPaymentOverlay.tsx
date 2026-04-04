@@ -6,11 +6,17 @@ import { formatCurrency } from '@/lib/utils'
 import { Loader2, CheckCircle2, X, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+interface SenderInfo {
+  tranId: string
+  senderName: string | null
+  senderPhone: string | null
+}
+
 interface Props {
   businessId: string
   expectedAmount: number
   currency: string
-  onConfirmed: (tranId: string) => void
+  onConfirmed: (info: SenderInfo) => void
   onCancel: () => void
 }
 
@@ -18,6 +24,7 @@ type Status = 'waiting' | 'confirmed'
 
 export function POSPaymentOverlay({ businessId, expectedAmount, currency, onConfirmed, onCancel }: Props) {
   const [status, setStatus] = useState<Status>('waiting')
+  const [senderInfo, setSenderInfo] = useState<SenderInfo | null>(null)
   const [dots, setDots] = useState(0)
   const sinceRef = useRef(new Date().toISOString())
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -42,13 +49,13 @@ export function POSPaymentOverlay({ businessId, expectedAmount, currency, onConf
           filter: `business_id=eq.${businessId}`,
         },
         (payload) => {
-          const tx = payload.new as { amount: number; direction: string; tran_id: string; is_recorded: boolean }
+          const tx = payload.new as { amount: number; direction: string; tran_id: string; is_recorded: boolean; sender_name: string | null; sender_phone: string | null }
           if (
             tx.direction === 'in' &&
             !tx.is_recorded &&
             Math.abs(tx.amount - expectedAmount) <= 0.5
           ) {
-            handleConfirmed(String(tx.tran_id))
+            handleConfirmed({ tranId: String(tx.tran_id), senderName: tx.sender_name ?? null, senderPhone: tx.sender_phone ?? null })
           }
         }
       )
@@ -73,7 +80,11 @@ export function POSPaymentOverlay({ businessId, expectedAmount, currency, onConf
         })
         const data = await res.json()
         if (data.found && data.transaction) {
-          handleConfirmed(String(data.transaction.tran_id ?? data.transaction.id))
+          handleConfirmed({
+            tranId: String(data.transaction.tran_id ?? data.transaction.id),
+            senderName: data.transaction.sender_name ?? null,
+            senderPhone: data.transaction.sender_phone ?? null,
+          })
         }
       } catch { /* non-fatal */ }
     }
@@ -83,11 +94,12 @@ export function POSPaymentOverlay({ businessId, expectedAmount, currency, onConf
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId, expectedAmount])
 
-  const handleConfirmed = (tranId: string) => {
+  const handleConfirmed = (info: SenderInfo) => {
     if (status === 'confirmed') return
     setStatus('confirmed')
+    setSenderInfo(info)
     if (intervalRef.current) clearInterval(intervalRef.current)
-    setTimeout(() => onConfirmed(tranId), 1200)
+    setTimeout(() => onConfirmed(info), 1200)
   }
 
   const waitingDots = '.'.repeat(dots)
@@ -135,7 +147,13 @@ export function POSPaymentOverlay({ businessId, expectedAmount, currency, onConf
             </div>
             <p className="text-2xl font-bold text-green-600 mb-2">Payment Received!</p>
             <p className="text-muted-foreground text-sm">{formatCurrency(expectedAmount, currency)} confirmed</p>
-            <p className="text-xs text-muted-foreground mt-2">Completing sale...</p>
+            {(senderInfo?.senderName || senderInfo?.senderPhone) && (
+              <div className="mt-3 bg-green-50 rounded-lg px-4 py-2.5 text-sm">
+                {senderInfo.senderName && <p className="font-semibold text-green-800">{senderInfo.senderName}</p>}
+                {senderInfo.senderPhone && <p className="text-green-600 text-xs mt-0.5">{senderInfo.senderPhone}</p>}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">Completing sale...</p>
           </div>
         )}
       </div>

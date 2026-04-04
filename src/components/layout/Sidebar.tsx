@@ -7,7 +7,7 @@ import { useBusiness, useFeature } from '@/contexts/BusinessContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart, Truck,
-  CreditCard, Store, Package, PieChart, Wallet, Zap, Settings,
+  CreditCard, Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, UserCheck, FileCheck, FileX, FileOutput,
   BarChart3, Kanban, X, Monitor
 } from 'lucide-react'
@@ -58,6 +58,7 @@ function buildNav(slug: string, hasEvc: boolean, hasPos: boolean): NavSection[] 
     {
       title: 'INVENTORY',
       items: [
+        ...(hasPos ? [{ label: 'Products', href: `${base}/products`, icon: ShoppingBag }] : []),
         { label: 'Items', href: `${base}/inventory`, icon: Package },
       ]
     },

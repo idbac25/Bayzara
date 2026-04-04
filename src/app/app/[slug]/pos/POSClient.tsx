@@ -11,7 +11,7 @@ import { POSPaymentOverlay } from './POSPaymentOverlay'
 import { POSReceipt } from './POSReceipt'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, ArrowLeft,
-  Banknote, Zap, CreditCard, User, ChevronDown
+  Banknote, Zap, CreditCard, User, ChevronDown, Maximize2, Minimize2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useFeature } from '@/contexts/BusinessContext'
@@ -27,6 +27,8 @@ interface POSItem {
   tax_rate: number
   stock_quantity: number | null
   type: string
+  category: string | null
+  image_url: string | null
 }
 
 interface POSClient {
@@ -75,6 +77,7 @@ interface CompletedSale {
   paymentMethod: 'cash' | 'evc' | 'credit'
   currency: string
   customerName?: string
+  customerPhone?: string
 }
 
 interface Props {
@@ -99,13 +102,14 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
   const [showEvcOverlay, setShowEvcOverlay] = useState(false)
   const [pendingEvcTranId, setPendingEvcTranId] = useState<string | null>(null)
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const hasCreditCustomers = useFeature('credit_customers')
   const hasEvcFeature = useFeature('evc_plus')
 
   // ── Derived state ──────────────────────────────────────────────────────────
 
   const categories = useMemo(() => {
-    const cats = [...new Set(items.map(i => i.type).filter(Boolean))]
+    const cats = [...new Set(items.map(i => i.category ?? i.type).filter(Boolean))]
     return cats as string[]
   }, [items])
 
@@ -113,7 +117,7 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     return items.filter(item => {
       const matchesSearch = !search || item.name.toLowerCase().includes(search.toLowerCase()) ||
         (item.sku && item.sku.toLowerCase().includes(search.toLowerCase()))
-      const matchesCategory = !categoryFilter || item.type === categoryFilter
+      const matchesCategory = !categoryFilter || (item.category ?? item.type) === categoryFilter
       return matchesSearch && matchesCategory
     })
   }, [items, search, categoryFilter])
@@ -172,7 +176,7 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
 
   // ── Sale completion ────────────────────────────────────────────────────────
 
-  const buildSalePayload = (evcTranId?: string) => ({
+  const buildSalePayload = (evcTranId?: string, senderName?: string | null, senderPhone?: string | null) => ({
     slug: business.slug,
     line_items: cart.map(ci => ({
       name: ci.item.name,
@@ -187,15 +191,17 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     customer_id: customer?.id ?? null,
     evc_tran_id: evcTranId ?? null,
     evc_connection_id: selectedEvc?.id ?? null,
+    evc_sender_name: senderName ?? null,
+    evc_sender_phone: senderPhone ?? null,
   })
 
-  const submitSale = async (evcTranId?: string) => {
+  const submitSale = async (evcTranId?: string, senderName?: string | null, senderPhone?: string | null) => {
     setIsProcessing(true)
     try {
       const res = await fetch('/api/pos/sale', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildSalePayload(evcTranId)),
+        body: JSON.stringify(buildSalePayload(evcTranId, senderName, senderPhone)),
       })
       const data = await res.json()
 
@@ -219,7 +225,8 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
         total,
         paymentMethod,
         currency: business.currency,
-        customerName: customer?.name,
+        customerName: senderName ?? customer?.name,
+        customerPhone: senderPhone ?? customer?.phone ?? undefined,
       })
 
       clearCart()
@@ -252,26 +259,40 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     await submitSale()
   }
 
-  const handleEvcConfirmed = async (tranId: string) => {
+  const handleEvcConfirmed = async ({ tranId, senderName, senderPhone }: { tranId: string; senderName: string | null; senderPhone: string | null }) => {
     setShowEvcOverlay(false)
     setPendingEvcTranId(tranId)
-    await submitSale(tranId)
+    await submitSale(tranId, senderName, senderPhone)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-64px)] bg-gray-50 -m-6 overflow-hidden">
+  const posContent = (
+    <div className={cn(
+      'flex flex-col bg-gray-50 overflow-hidden',
+      isFullscreen ? 'fixed inset-0 z-50' : 'h-[calc(100vh-64px)] -m-6'
+    )}>
       {/* Top bar */}
       <div className="bg-[#1a2744] text-white px-4 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Link href={`/app/${business.slug}`} className="text-white/60 hover:text-white">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+          {!isFullscreen && (
+            <Link href={`/app/${business.slug}`} className="text-white/60 hover:text-white">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          )}
           <span className="font-semibold">Point of Sale</span>
           <Badge className="bg-[#F5A623] text-black text-[10px] font-bold">LIVE</Badge>
         </div>
-        <span className="text-white/50 text-sm">{business.name}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-white/50 text-sm">{business.name}</span>
+          <button
+            onClick={() => setIsFullscreen(f => !f)}
+            className="text-white/60 hover:text-white p-1 rounded"
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -347,8 +368,23 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
                           {inCart.quantity}
                         </span>
                       )}
-                      <div className="w-full aspect-square bg-gray-100 rounded-lg mb-2 flex items-center justify-center">
-                        <ShoppingCart className="h-6 w-6 text-gray-300" />
+                      <div className="w-full aspect-square rounded-lg mb-2 overflow-hidden flex-shrink-0">
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className={cn(
+                            'w-full h-full flex items-center justify-center',
+                            (() => {
+                              const colors = ['bg-blue-100','bg-purple-100','bg-emerald-100','bg-orange-100','bg-rose-100','bg-teal-100','bg-amber-100','bg-cyan-100']
+                              let hash = 0; for (let i = 0; i < item.name.length; i++) hash = item.name.charCodeAt(i) + ((hash << 5) - hash)
+                              return colors[Math.abs(hash) % colors.length]
+                            })()
+                          )}>
+                            <span className="text-lg font-bold text-gray-500/60">
+                              {item.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <p className="text-xs font-semibold line-clamp-2 leading-tight mb-1">{item.name}</p>
                       <p className="text-sm font-bold text-[#0F4C81]">{formatCurrency(item.sale_price, business.currency)}</p>
@@ -596,4 +632,6 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
       )}
     </div>
   )
+
+  return posContent
 }

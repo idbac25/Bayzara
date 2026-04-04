@@ -23,6 +23,7 @@ interface CompletedSale {
   paymentMethod: 'cash' | 'evc' | 'credit'
   currency: string
   customerName?: string
+  customerPhone?: string
 }
 
 interface Business {
@@ -80,8 +81,11 @@ export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
               <span>{new Date(sale.date).toLocaleDateString()}</span>
             </div>
 
-            {sale.customerName && (
-              <p className="text-xs mb-2"><span className="text-muted-foreground">Customer:</span> {sale.customerName}</p>
+            {(sale.customerName || sale.customerPhone) && (
+              <div className="text-xs mb-2">
+                {sale.customerName && <p><span className="text-muted-foreground">Customer:</span> {sale.customerName}</p>}
+                {sale.customerPhone && <p><span className="text-muted-foreground">Phone:</span> {sale.customerPhone}</p>}
+              </div>
             )}
 
             <div className="border-t border-dashed pt-2 mb-2">
@@ -156,6 +160,7 @@ export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
           <span>{new Date(sale.date).toLocaleDateString()}</span>
         </div>
         {sale.customerName && <div style={{ marginBottom: '4px' }}>Customer: {sale.customerName}</div>}
+        {sale.customerPhone && <div style={{ marginBottom: '4px' }}>Phone: {sale.customerPhone}</div>}
         <div style={{ borderTop: '1px dashed #000', marginBottom: '4px' }} />
         {sale.items.map((item, i) => (
           <div key={i} style={{ marginBottom: '4px' }}>

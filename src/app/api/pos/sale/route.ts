@@ -20,6 +20,8 @@ interface SalePayload {
   customer_id?: string | null
   evc_tran_id?: string | null
   evc_connection_id?: string | null
+  evc_sender_name?: string | null
+  evc_sender_phone?: string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body: SalePayload = await req.json()
-  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_connection_id } = body
+  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_connection_id, evc_sender_name, evc_sender_phone } = body
 
   if (!slug || !line_items?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -48,9 +50,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Business not found' }, { status: 404 })
   }
 
+  // If no customer selected but we have an EVC phone, try to match an existing client
+  let resolvedCustomerId = customer_id ?? null
+  if (!resolvedCustomerId && evc_sender_phone) {
+    const localPhone = evc_sender_phone.replace(/^(252|\+252)/, '')
+    const { data: matchedClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('business_id', business.id)
+      .or(`evc_phone.eq.${localPhone},phone.eq.${localPhone},phone.eq.252${localPhone}`)
+      .maybeSingle()
+    if (matchedClient) resolvedCustomerId = matchedClient.id
+  }
+
   // Get credit terms if credit sale
   let creditTermsDays = 30
-  if (payment_method === 'credit' && customer_id) {
+  if (payment_method === 'credit' && resolvedCustomerId) {
     const { data: client } = await supabase
       .from('clients')
       .select('credit_terms_days, credit_limit')
@@ -96,7 +111,7 @@ export async function POST(req: NextRequest) {
       document_number: docNumber,
       date: today,
       due_date: dueDate,
-      client_id: customer_id ?? null,
+      client_id: resolvedCustomerId,
       status: 'sent',
       currency: business.currency,
       subtotal,
@@ -104,8 +119,9 @@ export async function POST(req: NextRequest) {
       total,
       amount_paid: 0,
       amount_due: total,
-      title: 'POS Sale',
+      title: evc_sender_name ? `POS Sale – ${evc_sender_name}` : 'POS Sale',
       source: 'pos',
+      ...(evc_sender_phone ? { notes: `EVC: ${evc_sender_name ?? ''} ${evc_sender_phone}`.trim() } : {}),
     })
     .select()
     .single()
