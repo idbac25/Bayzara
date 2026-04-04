@@ -19,6 +19,13 @@ interface AltPhone {
   added_at: string
 }
 
+interface LineItem {
+  name: string
+  quantity: number
+  unit: string
+  rate: number
+}
+
 interface Purchase {
   id: string
   document_number: string
@@ -27,6 +34,7 @@ interface Purchase {
   payment_method: string | null
   evc_sender_phone: string | null
   status: string
+  line_items: LineItem[]
 }
 
 interface Customer {
@@ -297,51 +305,57 @@ export function CustomerProfileClient({ business, customer, altPhones: initialPh
             No purchases recorded yet
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-5 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invoice</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Payment</th>
-                <th className="text-right px-5 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {purchases.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50/50">
-                  <td className="px-5 py-2.5 font-medium text-[#0F4C81]">
-                    {p.document_number}
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{formatDate(p.date)}</td>
-                  <td className="px-4 py-2.5">
+          <div className="divide-y">
+            {purchases.map(p => (
+              <div key={p.id} className="px-5 py-3 hover:bg-gray-50/50">
+                {/* Row header */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-semibold text-[#0F4C81] flex-shrink-0">
+                      {p.document_number}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formatDate(p.date)}</span>
                     {p.payment_method === 'evc' ? (
-                      <Badge className="text-[10px] bg-[#F5A623] text-black">EVC Plus</Badge>
-                    ) : p.payment_method === 'cash' ? (
-                      <Badge variant="outline" className="text-[10px]">Cash</Badge>
+                      <Badge className="text-[10px] bg-[#F5A623] text-black flex-shrink-0">EVC Plus</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-[10px]">{p.payment_method ?? '—'}</Badge>
+                      <Badge variant="outline" className="text-[10px] flex-shrink-0 capitalize">
+                        {p.payment_method ?? 'Cash'}
+                      </Badge>
                     )}
-                  </td>
-                  <td className="px-5 py-2.5 text-right font-semibold">
-                    <div className="flex items-center justify-end gap-2">
-                      <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-                      {formatCurrency(p.total, business.currency)}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-gray-50 border-t">
-              <tr>
-                <td colSpan={3} className="px-5 py-2.5 text-sm font-semibold text-muted-foreground">
-                  Total ({purchases.length} sales)
-                </td>
-                <td className="px-5 py-2.5 text-right font-bold text-[#0F4C81]">
-                  {formatCurrency(customer.total_spent, business.currency)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                    <span className="font-bold text-sm">{formatCurrency(p.total, business.currency)}</span>
+                  </div>
+                </div>
+
+                {/* Line items */}
+                {p.line_items?.length > 0 && (
+                  <div className="mt-1.5 space-y-0.5 pl-1">
+                    {p.line_items.map((item, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                        <span className="font-medium text-gray-700">{item.name}</span>
+                        <span>×{item.quantity}</span>
+                        <span className="text-gray-400">·</span>
+                        <span>{formatCurrency(item.rate, business.currency)}/{item.unit}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Footer total */}
+            <div className="px-5 py-3 bg-gray-50 flex justify-between items-center">
+              <span className="text-sm font-semibold text-muted-foreground">
+                Total ({purchases.length} sale{purchases.length !== 1 ? 's' : ''})
+              </span>
+              <span className="font-bold text-[#0F4C81]">
+                {formatCurrency(customer.total_spent, business.currency)}
+              </span>
+            </div>
+          </div>
         )}
       </div>
     </div>

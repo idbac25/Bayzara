@@ -36,10 +36,10 @@ export default async function CustomerProfilePage({ params }: Props) {
     .eq('customer_id', id)
     .order('added_at', { ascending: true })
 
-  // Recent purchase history (last 50)
+  // Recent purchase history with line items (last 50)
   const { data: purchases } = await supabase
     .from('documents')
-    .select('id, document_number, date, total, payment_method, evc_sender_phone, status')
+    .select('id, document_number, date, total, payment_method, evc_sender_phone, status, line_items(name, quantity, unit, rate)')
     .eq('pos_customer_id', id)
     .eq('source', 'pos')
     .order('date', { ascending: false })
