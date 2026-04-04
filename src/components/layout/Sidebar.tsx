@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
   CreditCard, Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, UserCheck, FileCheck, FileX, FileOutput,
-  BarChart3, Kanban, X, Monitor, UserRound
+  BarChart3, Kanban, X, Monitor, UserRound, BookOpen
 } from 'lucide-react'
 
 interface NavItem {
@@ -37,6 +37,7 @@ function buildNav(slug: string, hasEvc: boolean, hasPos: boolean): NavSection[] 
       items: [
         ...(hasPos ? [{ label: 'POS', href: `${base}/pos`, icon: Monitor }] : []),
         ...(hasPos ? [{ label: 'Customers', href: `${base}/customers`, icon: UserRound }] : []),
+        ...(hasPos ? [{ label: 'Debt Book', href: `${base}/debt-book`, icon: BookOpen }] : []),
         { label: 'Clients', href: `${base}/clients`, icon: Users },
         { label: 'Quotations', href: `${base}/quotations`, icon: FileText },
         { label: 'Invoices', href: `${base}/invoices`, icon: Receipt },
