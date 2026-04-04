@@ -40,30 +40,76 @@ interface Props {
   onNewSale: () => void
 }
 
+const METHOD_LABEL: Record<string, string> = {
+  cash: 'Cash',
+  evc: 'EVC Plus',
+  credit: 'Credit',
+}
+
+function printReceipt(sale: CompletedSale, business: Business) {
+  const w = window.open('', '_blank', 'width=380,height=600,toolbar=0,menubar=0,scrollbars=1')
+  if (!w) return
+
+  const itemRows = sale.items.map(item => `
+    <div style="margin-bottom:6px">
+      <div style="font-weight:600">${item.name}</div>
+      <div style="display:flex;justify-content:space-between;color:#555">
+        <span>${item.quantity} &times; ${formatCurrency(item.rate, sale.currency)}</span>
+        <span>${formatCurrency(item.quantity * item.rate, sale.currency)}</span>
+      </div>
+    </div>
+  `).join('')
+
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8"/>
+    <title>Receipt ${sale.invoiceNumber}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Courier New', monospace; font-size: 12px; padding: 12px; max-width: 300px; margin: 0 auto; }
+      .center { text-align: center; }
+      .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+      .divider { border-top: 1px dashed #000; margin: 6px 0; }
+      .bold { font-weight: bold; }
+      .total-row { font-size: 14px; font-weight: bold; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px; display: flex; justify-content: space-between; }
+      .small { font-size: 10px; color: #666; }
+      @media print { @page { margin: 4mm; } }
+    </style>
+  </head><body>
+    <div class="center" style="margin-bottom:8px">
+      <div class="bold" style="font-size:14px">${business.name}</div>
+      ${business.phone ? `<div>${business.phone}</div>` : ''}
+      ${business.city  ? `<div>${business.city}</div>`  : ''}
+    </div>
+    <div class="divider"></div>
+    <div class="row">
+      <span>${sale.invoiceNumber}</span>
+      <span>${new Date(sale.date).toLocaleDateString()}</span>
+    </div>
+    ${sale.customerName  ? `<div style="margin-bottom:2px">Customer: ${sale.customerName}</div>`  : ''}
+    ${sale.customerPhone ? `<div style="margin-bottom:4px">Phone: ${sale.customerPhone}</div>` : ''}
+    <div class="divider"></div>
+    ${itemRows}
+    <div class="divider"></div>
+    <div class="row"><span>Subtotal</span><span>${formatCurrency(sale.subtotal, sale.currency)}</span></div>
+    ${sale.taxAmount > 0 ? `<div class="row"><span>Tax</span><span>${formatCurrency(sale.taxAmount, sale.currency)}</span></div>` : ''}
+    <div class="total-row"><span>TOTAL</span><span>${formatCurrency(sale.total, sale.currency)}</span></div>
+    <div class="row" style="margin-top:4px"><span>Payment</span><span>${METHOD_LABEL[sale.paymentMethod] ?? sale.paymentMethod}</span></div>
+    <div class="divider" style="margin-top:8px"></div>
+    <div class="center small" style="margin-top:6px">Thank you for your business</div>
+    <div class="center small" style="margin-top:2px">Powered by Bayzara</div>
+  </body></html>`)
+
+  w.document.close()
+  w.focus()
+  // Small delay so the browser finishes rendering before the print dialog opens
+  setTimeout(() => { w.print(); w.close() }, 250)
+}
+
 export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
-  // Receipt does not auto-print — cashier reviews and clicks Print manually
-  // (printing before payment match confirmation would produce a blank/premature receipt)
-
-  const methodLabel: Record<string, string> = {
-    cash: 'Cash',
-    evc: 'EVC Plus',
-    credit: 'Credit',
-  }
-
   return (
     <>
-      {/* Print styles */}
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          .pos-receipt-print { display: block !important; }
-          .pos-receipt-no-print { display: none !important; }
-        }
-        .pos-receipt-print { display: none; }
-      `}</style>
-
       {/* Screen overlay */}
-      <div className="pos-receipt-no-print fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs mx-4 overflow-hidden">
           {/* Receipt content (screen) */}
           <div className="p-4 border-b">
@@ -114,7 +160,7 @@ export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Payment</span>
-                <span>{methodLabel[sale.paymentMethod]}</span>
+                <span>{METHOD_LABEL[sale.paymentMethod]}</span>
               </div>
             </div>
 
@@ -127,7 +173,7 @@ export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
           </div>
 
           <div className="p-3 flex gap-2">
-            <Button size="sm" variant="outline" className="flex-1" onClick={() => window.print()}>
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => printReceipt(sale, business)}>
               <Printer className="h-4 w-4 mr-1.5" />Print
             </Button>
             <Button size="sm" className="flex-1 bg-[#0F4C81] hover:bg-[#0d3d6b]" onClick={onNewSale}>
@@ -143,57 +189,6 @@ export function POSReceipt({ sale, business, onClose, onNewSale }: Props) {
           </button>
         </div>
       </div>
-
-      {/* Printable receipt */}
-      <div className="pos-receipt-print" style={{ fontFamily: 'monospace', fontSize: '12px', maxWidth: '300px', margin: '0 auto', padding: '10px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{business.name}</div>
-          {business.phone && <div>{business.phone}</div>}
-          {business.city && <div>{business.city}</div>}
-        </div>
-        <div style={{ borderTop: '1px dashed #000', marginBottom: '4px' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <span>{sale.invoiceNumber}</span>
-          <span>{new Date(sale.date).toLocaleDateString()}</span>
-        </div>
-        {sale.customerName && <div style={{ marginBottom: '4px' }}>Customer: {sale.customerName}</div>}
-        {sale.customerPhone && <div style={{ marginBottom: '4px' }}>Phone: {sale.customerPhone}</div>}
-        <div style={{ borderTop: '1px dashed #000', marginBottom: '4px' }} />
-        {sale.items.map((item, i) => (
-          <div key={i} style={{ marginBottom: '4px' }}>
-            <div>{item.name}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>{item.quantity} x {formatCurrency(item.rate, sale.currency)}</span>
-              <span>{formatCurrency(item.quantity * item.rate, sale.currency)}</span>
-            </div>
-          </div>
-        ))}
-        <div style={{ borderTop: '1px dashed #000', marginBottom: '4px' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Subtotal</span><span>{formatCurrency(sale.subtotal, sale.currency)}</span>
-        </div>
-        {sale.taxAmount > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Tax</span><span>{formatCurrency(sale.taxAmount, sale.currency)}</span>
-          </div>
-        )}
-        <div style={{ borderTop: '1px dashed #000', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', margin: '4px 0' }}>
-          <span>TOTAL</span><span>{formatCurrency(sale.total, sale.currency)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Payment</span><span>{methodLabel[sale.paymentMethod]}</span>
-        </div>
-        <div style={{ borderTop: '1px dashed #000', textAlign: 'center', marginTop: '8px', paddingTop: '4px' }}>
-          <div>Thank you for your business</div>
-          <div style={{ fontSize: '10px', color: '#666' }}>Powered by Bayzara</div>
-        </div>
-      </div>
     </>
   )
-}
-
-const methodLabel: Record<string, string> = {
-  cash: 'Cash',
-  evc: 'EVC Plus',
-  credit: 'Credit',
 }
