@@ -12,7 +12,7 @@ const admin = createAdminClient(
 export default async function AdminBusinessesPage() {
   const { data: businesses } = await admin
     .from('businesses')
-    .select('id, name, slug, plan, currency, country, created_at, email, suspended_at')
+    .select('id, name, slug, plan, currency, country, created_at, email, suspended_at, mode')
     .order('created_at', { ascending: false })
 
   const { data: memberCounts } = await admin

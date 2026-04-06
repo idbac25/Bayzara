@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bayzara – EVC Plus Integration Guide</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; background: #fff; }
+  .page { max-width: 750px; margin: 0 auto; padding: 60px 50px; }
+
+  .header { border-bottom: 3px solid #0F4C81; padding-bottom: 24px; margin-bottom: 40px; }
+  .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .logo-icon { width: 44px; height: 44px; border-radius: 10px; background: linear-gradient(135deg, #F5A623, #e09520); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 22px; color: #000; }
+  .logo-text { font-size: 26px; font-weight: 800; color: #0F4C81; }
+  h1 { font-size: 22px; font-weight: 700; color: #0F4C81; margin-top: 6px; }
+  .subtitle { color: #666; font-size: 13px; margin-top: 4px; }
+
+  h2 { font-size: 16px; font-weight: 700; color: #0F4C81; margin: 36px 0 12px; padding-left: 12px; border-left: 4px solid #F5A623; }
+  h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin: 20px 0 8px; }
+
+  p { font-size: 13.5px; line-height: 1.75; color: #333; margin-bottom: 10px; }
+
+  .step-box { background: #f7faff; border: 1px solid #d0e0f0; border-radius: 10px; padding: 18px 22px; margin: 12px 0; }
+  .step-number { display: inline-block; background: #0F4C81; color: #fff; font-weight: 700; font-size: 12px; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; margin-right: 8px; }
+  .step-title { font-weight: 700; font-size: 14px; color: #0F4C81; }
+  .step-body { font-size: 13px; color: #444; margin-top: 6px; line-height: 1.7; }
+
+  .auto-box { background: #fff8ee; border: 1px solid #f5c97a; border-radius: 10px; padding: 18px 22px; margin: 12px 0; }
+  .auto-number { display: inline-block; background: #F5A623; color: #000; font-weight: 700; font-size: 12px; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 24px; margin-right: 8px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #0F4C81; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 9px 14px; border-bottom: 1px solid #e8edf5; }
+  tr:nth-child(even) td { background: #f7faff; }
+  .check { color: #27AE60; font-weight: 700; }
+
+  .notice { background: #fff3cd; border-left: 4px solid #F5A623; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 13px; }
+  .notice strong { color: #856404; }
+
+  .tip { background: #e8f5e9; border-left: 4px solid #27AE60; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 13px; }
+  .tip strong { color: #1b5e20; }
+
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999; text-align: center; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { padding: 40px 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">B</div>
+      <div class="logo-text">Bayzara</div>
+    </div>
+    <h1>EVC Plus Merchant Integration — Complete Guide</h1>
+    <p class="subtitle">How Hormud EVC Plus is connected to your Bayzara business account</p>
+  </div>
+
+  <!-- Section 1 -->
+  <h2>When You Enter Your Merchant ID &amp; Password</h2>
+  <p>When you go to <strong>EVC Plus → Connect</strong> and type in your Hormud merchant username and password, here is exactly what Bayzara does behind the scenes:</p>
+
+  <div class="step-box">
+    <div><span class="step-number">1</span><span class="step-title">Bayzara logs into Hormud on your behalf</span></div>
+    <div class="step-body">Your credentials are sent securely from your browser to Bayzara's server — never stored in the browser or shared with anyone. The server contacts Hormud's merchant API directly and logs in, exactly like you would on the Hormud merchant website. Hormud responds with a temporary session token (a digital key that expires after 8 hours).</div>
+  </div>
+
+  <div class="step-box">
+    <div><span class="step-number">2</span><span class="step-title">Your balance and account name are fetched immediately</span></div>
+    <div class="step-body">Using the session token, Bayzara immediately retrieves your current EVC wallet balance and your merchant account name. This is displayed on the confirmation screen so you can verify it is the correct account before activating.</div>
+  </div>
+
+  <div class="step-box">
+    <div><span class="step-number">3</span><span class="step-title">You click Confirm — the connection goes live</span></div>
+    <div class="step-body">Nothing is saved as "active" until you confirm. When you click Activate, two things happen automatically: (1) your EVC connection is marked as live in Bayzara's database, and (2) a new <strong>Payment Account</strong> is created inside your business under Bank Accounts, linked directly to your EVC wallet.</div>
+  </div>
+
+  <!-- Section 2 -->
+  <h2>What Runs Automatically Every 60 Seconds</h2>
+  <p>After activation, Bayzara has a background service — called a "sync engine" — that wakes up every minute and processes your EVC account automatically. Here is what it does each cycle:</p>
+
+  <div class="auto-box">
+    <div><span class="auto-number">1</span><span class="step-title">Checks for new incoming payments</span></div>
+    <div class="step-body">It asks Hormud: "Are there any new payments since the last one we recorded?" Up to 50 new transactions are fetched per cycle. The system never imports the same transaction twice — every transaction has a unique ID (<em>tran_id</em>) and duplicates are automatically blocked.</div>
+  </div>
+
+  <div class="auto-box">
+    <div><span class="auto-number">2</span><span class="step-title">Looks up who sent each payment</span></div>
+    <div class="step-body">For every transaction, it checks the sender's phone number against your client list. If the phone number matches a client's saved <strong>EVC Phone</strong> field, the transaction is automatically linked to that client. If no match is found, the sender's name is looked up from Hormud's customer profile API.</div>
+  </div>
+
+  <div class="auto-box">
+    <div><span class="auto-number">3</span><span class="step-title">Matches the payment to an open invoice</span></div>
+    <div class="step-body">If a client is identified, Bayzara looks for their oldest unpaid or overdue invoice. If the payment amount <em>exactly matches</em> the amount owed on that invoice, the payment is automatically recorded and the invoice is marked as paid — with zero manual work from you.</div>
+  </div>
+
+  <div class="auto-box">
+    <div><span class="auto-number">4</span><span class="step-title">Flags anything uncertain for your review</span></div>
+    <div class="step-body">If the sender is unknown, the amount doesn't match any invoice, or the client has no outstanding invoices, the transaction is saved and marked <strong>"Needs Review."</strong> It will appear in your EVC Hub where you can manually assign it to the correct client and invoice.</div>
+  </div>
+
+  <div class="auto-box">
+    <div><span class="auto-number">5</span><span class="step-title">Updates your live wallet balance</span></div>
+    <div class="step-body">Your current EVC wallet balance is refreshed every minute. The latest balance is always shown on your dashboard and in the EVC Hub.</div>
+  </div>
+
+  <!-- Section 3 -->
+  <h2>What Happens in Different Scenarios</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Situation</th>
+        <th>What Bayzara Does</th>
+        <th>Action Needed?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Client pays exact invoice amount, phone is saved</td>
+        <td>Auto-records payment, marks invoice paid</td>
+        <td><span class="check">✓ None</span></td>
+      </tr>
+      <tr>
+        <td>Client phone is saved but amount differs slightly</td>
+        <td>Links to client, flags for review</td>
+        <td>Confirm in EVC Hub</td>
+      </tr>
+      <tr>
+        <td>Unknown phone number (no client match)</td>
+        <td>Saves transaction, marked "Needs Review"</td>
+        <td>Assign manually</td>
+      </tr>
+      <tr>
+        <td>Client exists but no open invoices</td>
+        <td>Links to client, flags for review</td>
+        <td>Assign to correct document</td>
+      </tr>
+      <tr>
+        <td>Duplicate transaction received</td>
+        <td>Automatically ignored</td>
+        <td><span class="check">✓ None</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Section 4 -->
+  <h2>The One Thing That Makes It Work Best</h2>
+
+  <div class="tip">
+    <strong>💡 Key tip:</strong> The entire auto-matching system depends on one thing — having each client's EVC phone number saved in their profile. Go to <strong>Clients → [Client Name] → Edit</strong> and fill in the <em>EVC Phone</em> field. Once that is done, every future payment from that client is matched and recorded automatically.
+  </div>
+
+  <!-- Section 5 -->
+  <h2>Do You Need to Do Anything After Connecting?</h2>
+  <p>For the most part, <strong>no</strong> — the system runs on its own. But here is a quick checklist:</p>
+
+  <h3>One-time setup (do this once)</h3>
+  <p>✅ Connect your EVC merchant account (enter username + password, confirm)<br>
+  ✅ Add the EVC phone number to each of your clients' profiles</p>
+
+  <h3>Ongoing (only when needed)</h3>
+  <p>🔍 Check the <strong>EVC Hub → Needs Review</strong> tab occasionally for any unmatched transactions<br>
+  🔁 If your Hormud session expires (after 8 hours), you may need to reconnect once</p>
+
+  <!-- Notice -->
+  <div class="notice">
+    <strong>⚠️ Important — Background sync deployment:</strong> The automatic every-60-second sync is a Supabase Edge Function that needs to be deployed separately to Supabase's servers. Until it is deployed, transactions will not import automatically. You can still trigger a manual sync from the EVC Hub at any time. Ask your developer to run <code>supabase functions deploy evc-sync</code> when you are ready to go fully live.
+  </div>
+
+  <!-- Summary -->
+  <h2>Summary</h2>
+  <p>Think of it like this: Bayzara acts as your accountant who watches your EVC merchant account 24/7. Every time money comes in, it checks if it knows who sent it, finds the matching invoice, and ticks it off — all automatically. If it's not sure, it puts it in a pile and asks you to check.</p>
+
+  <div class="footer">
+    Bayzara · Business Management Platform · bayzara.com<br>
+    This document is for internal use. Generated for your Bayzara account.
+  </div>
+
+</div>
+</body>
+</html>

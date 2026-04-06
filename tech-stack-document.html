@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bayzara – Technology Stack Document</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; background: #fff; font-size: 13.5px; }
+  .page { max-width: 780px; margin: 0 auto; padding: 60px 50px; }
+
+  /* Header */
+  .header { border-bottom: 3px solid #0F4C81; padding-bottom: 24px; margin-bottom: 40px; }
+  .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .logo-icon { width: 46px; height: 46px; border-radius: 11px; background: linear-gradient(135deg, #F5A623, #e09520); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 24px; color: #000; }
+  .logo-name { font-size: 28px; font-weight: 800; color: #0F4C81; }
+  .doc-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-top: 4px; }
+  .doc-meta { color: #777; font-size: 12px; margin-top: 4px; }
+
+  /* TOC */
+  .toc { background: #f7faff; border: 1px solid #d0e0f0; border-radius: 10px; padding: 20px 26px; margin-bottom: 40px; }
+  .toc-title { font-weight: 700; color: #0F4C81; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .toc ol { padding-left: 18px; }
+  .toc li { font-size: 13px; color: #0F4C81; line-height: 2; }
+
+  /* Sections */
+  h2 { font-size: 16px; font-weight: 700; color: #0F4C81; margin: 40px 0 14px; padding: 10px 16px; background: #f0f6ff; border-left: 4px solid #0F4C81; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin: 22px 0 8px; }
+  h4 { font-size: 13px; font-weight: 700; color: #0F4C81; margin: 14px 0 6px; }
+  p { line-height: 1.8; color: #333; margin-bottom: 10px; }
+
+  /* Cards */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .card { background: #f7faff; border: 1px solid #d0e0f0; border-radius: 8px; padding: 14px 16px; }
+  .card-title { font-weight: 700; font-size: 13px; color: #0F4C81; margin-bottom: 4px; }
+  .card-body { font-size: 12.5px; color: #444; line-height: 1.65; }
+  .card-badge { display: inline-block; background: #0F4C81; color: #fff; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 1px 6px; margin-bottom: 6px; }
+  .card-badge.gold { background: #F5A623; color: #000; }
+  .card-badge.green { background: #27AE60; color: #fff; }
+  .card-badge.purple { background: #8B5CF6; color: #fff; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 12.5px; }
+  th { background: #0F4C81; color: #fff; padding: 9px 13px; text-align: left; font-weight: 600; font-size: 12px; }
+  td { padding: 8px 13px; border-bottom: 1px solid #e8edf5; vertical-align: top; }
+  tr:nth-child(even) td { background: #f7faff; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 3px; padding: 1px 5px; margin: 1px; }
+  .tag-blue { background: #dbeafe; color: #1e40af; }
+  .tag-gold { background: #fef3c7; color: #92400e; }
+  .tag-green { background: #d1fae5; color: #065f46; }
+  .tag-gray { background: #f1f5f9; color: #475569; }
+
+  /* Code */
+  code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 11.5px; color: #1e40af; }
+  .code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 16px 20px; margin: 12px 0; font-family: 'Courier New', monospace; font-size: 11.5px; line-height: 1.8; overflow-x: auto; }
+  .code-block .cm { color: #6c7086; }
+  .code-block .kw { color: #cba6f7; }
+  .code-block .st { color: #a6e3a1; }
+  .code-block .fn { color: #89b4fa; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 0; margin: 16px 0; flex-wrap: wrap; }
+  .flow-box { background: #0F4C81; color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 14px; border-radius: 6px; text-align: center; }
+  .flow-box.gold { background: #F5A623; color: #000; }
+  .flow-box.green { background: #27AE60; }
+  .flow-box.gray { background: #64748b; }
+  .flow-arrow { color: #94a3b8; font-size: 18px; padding: 0 6px; }
+
+  /* Notice */
+  .notice { background: #fff8ee; border-left: 4px solid #F5A623; padding: 13px 17px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 12.5px; }
+  .tip { background: #e8f5e9; border-left: 4px solid #27AE60; padding: 13px 17px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 12.5px; }
+
+  /* DB table list */
+  .db-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 14px 0; }
+  .db-item { background: #1e1e2e; color: #89b4fa; font-family: 'Courier New', monospace; font-size: 11.5px; padding: 7px 11px; border-radius: 5px; }
+
+  /* Module list */
+  .module-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+  .module-icon { font-size: 18px; min-width: 24px; }
+  .module-name { font-weight: 700; font-size: 13px; color: #0F4C81; }
+  .module-desc { font-size: 12.5px; color: #555; margin-top: 2px; }
+  .module-path { font-family: 'Courier New', monospace; font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+  /* Footer */
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999; text-align: center; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { padding: 40px; }
+    h2 { page-break-before: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">B</div>
+      <div class="logo-name">Bayzara</div>
+    </div>
+    <div class="doc-title">Technology Stack &amp; Architecture Document</div>
+    <div class="doc-meta">Version 1.0 &nbsp;·&nbsp; Confidential &nbsp;·&nbsp; March 2026</div>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <ol>
+      <li>Platform Overview</li>
+      <li>Frontend — Framework &amp; UI</li>
+      <li>Backend — Server &amp; API Layer</li>
+      <li>Database — Schema &amp; Structure</li>
+      <li>Authentication &amp; Security</li>
+      <li>File Storage</li>
+      <li>EVC Plus Integration</li>
+      <li>Background Jobs &amp; Edge Functions</li>
+      <li>Hosting &amp; Deployment</li>
+      <li>Application Modules</li>
+      <li>Request Flow — End to End</li>
+      <li>Environment Variables</li>
+    </ol>
+  </div>
+
+  <!-- 1. Overview -->
+  <h2>1. Platform Overview</h2>
+  <p>Bayzara is a <strong>multi-tenant SaaS business management platform</strong> built specifically for Somali businesses. It handles invoicing, clients, vendors, inventory, purchases, leads (CRM), reports, and native Hormud EVC Plus payment integration. Multiple businesses can run on the same platform, each completely isolated from one another.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-badge">Architecture</div>
+      <div class="card-title">Multi-Tenant SaaS</div>
+      <div class="card-body">Each business gets its own slug-based workspace (e.g. <code>/app/my-business</code>). All data is isolated by <code>business_id</code> at the database level using Row Level Security.</div>
+    </div>
+    <div class="card">
+      <div class="card-badge gold">Target Market</div>
+      <div class="card-title">Somalia &amp; East Africa</div>
+      <div class="card-body">Built-in support for Somali Shilling, USD, EVC Plus mobile payments, and East Africa timezones. Default language is English with Somali context throughout.</div>
+    </div>
+    <div class="card">
+      <div class="card-badge green">Deployment</div>
+      <div class="card-title">Cloud-Native</div>
+      <div class="card-body">Fully serverless. No traditional servers to manage. Runs on Vercel (frontend + API) and Supabase (database + auth + storage + edge functions).</div>
+    </div>
+    <div class="card">
+      <div class="card-badge purple">Codebase</div>
+      <div class="card-title">Monorepo</div>
+      <div class="card-body">Single repository on GitHub containing the Next.js app, Supabase migrations, and Supabase Edge Functions. One push deploys everything.</div>
+    </div>
+  </div>
+
+  <!-- 2. Frontend -->
+  <h2>2. Frontend — Framework &amp; UI</h2>
+
+  <h3>Core Framework</h3>
+  <table>
+    <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Next.js</strong></td><td>16.2.1</td><td>Full-stack React framework. Handles routing, server-side rendering, API routes, and middleware. Uses the App Router (not the older Pages Router).</td></tr>
+      <tr><td><strong>React</strong></td><td>19.2.4</td><td>UI component library. All pages and components are built with React. Uses the latest concurrent features.</td></tr>
+      <tr><td><strong>TypeScript</strong></td><td>5.x</td><td>Strongly typed JavaScript. Every file in the codebase is TypeScript — prevents runtime errors and improves developer experience.</td></tr>
+      <tr><td><strong>Turbopack</strong></td><td>Built-in</td><td>Next.js's new bundler (replaces Webpack). Makes builds and hot-reloads significantly faster during development.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Routing Strategy</h3>
+  <p>Bayzara uses Next.js <strong>App Router</strong> with a file-based routing system. The multi-tenant workspace is powered by a dynamic <code>[slug]</code> segment:</p>
+  <div class="code-block">
+    <span class="cm">// URL structure</span><br>
+    /app/<span class="st">[slug]</span>/                  <span class="cm">← Business dashboard</span><br>
+    /app/<span class="st">[slug]</span>/invoices          <span class="cm">← Invoice list</span><br>
+    /app/<span class="st">[slug]</span>/invoices/<span class="st">[id]</span>    <span class="cm">← Invoice detail</span><br>
+    /app/<span class="st">[slug]</span>/clients           <span class="cm">← Client management</span><br>
+    /admin/                         <span class="cm">← Platform super admin</span><br>
+    /i/<span class="st">[public_token]</span>             <span class="cm">← Public invoice view</span>
+  </div>
+
+  <h3>UI Component System</h3>
+  <table>
+    <thead><tr><th>Library</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><strong>shadcn/ui</strong></td><td>Pre-built accessible component library (buttons, inputs, dialogs, tabs, dropdowns). Not a traditional npm package — components are copied directly into the codebase and customized.</td></tr>
+      <tr><td><strong>Radix UI</strong></td><td>The headless primitive layer underneath shadcn/ui. Provides accessibility (ARIA), keyboard navigation, and focus management with zero styling. Used for: Avatar, Dialog, DropdownMenu, Label, Popover, ScrollArea, Select, Separator, Slot, Tabs.</td></tr>
+      <tr><td><strong>Lucide React</strong></td><td>Icon library. Over 1,000 clean SVG icons used throughout the interface — sidebar navigation, buttons, status indicators.</td></tr>
+      <tr><td><strong>Tailwind CSS</strong></td><td>Utility-first CSS framework (v4). All styling is done with Tailwind class names directly in JSX. No separate CSS files for components.</td></tr>
+      <tr><td><strong>tw-animate-css</strong></td><td>Animation utilities for smooth transitions, modal open/close, loading states.</td></tr>
+      <tr><td><strong>next-themes</strong></td><td>Dark/light mode management. The admin portal uses a dark theme (<code>#0F0F1A</code>) while the business app uses a light theme.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Forms &amp; Validation</h3>
+  <table>
+    <thead><tr><th>Library</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><strong>React Hook Form</strong> v7</td><td>Performant form state management. Used in onboarding, settings, inventory, leads, and vendor/client forms. Avoids unnecessary re-renders.</td></tr>
+      <tr><td><strong>Zod</strong> v4</td><td>Schema-based validation. Form schemas define shape, required fields, and validation rules. Works with React Hook Form via <code>@hookform/resolvers</code>.</td></tr>
+      <tr><td><strong>Sonner</strong></td><td>Toast notification system. All success/error messages across the app (saved, deleted, error, etc.) use Sonner toasts.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Data Display</h3>
+  <table>
+    <thead><tr><th>Library</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td><strong>TanStack Table</strong> v8</td><td>Headless table engine for sortable, filterable data tables (clients, invoices, inventory, leads). Full control over rendering.</td></tr>
+      <tr><td><strong>Recharts</strong> v3</td><td>Chart library for the Reports module — income vs expenses bar charts, EVC monthly summaries.</td></tr>
+      <tr><td><strong>date-fns</strong> v4</td><td>Date manipulation and formatting utilities.</td></tr>
+      <tr><td><strong>react-day-picker</strong></td><td>Calendar date picker component used in invoice date fields.</td></tr>
+      <tr><td><strong>cmdk</strong></td><td>Command palette component for quick navigation.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>State Management</h3>
+  <table>
+    <thead><tr><th>Approach</th><th>Used For</th></tr></thead>
+    <tbody>
+      <tr><td><strong>React useState / useReducer</strong></td><td>Local component state — form inputs, modal open/close, selected rows, filter values.</td></tr>
+      <tr><td><strong>Zustand</strong> v5</td><td>Global client-side state store for app-wide state that needs to persist across components.</td></tr>
+      <tr><td><strong>Next.js Server Components</strong></td><td>Data fetching happens on the server (no client-side API calls for initial page loads). Pages are rendered with fresh data from Supabase before being sent to the browser.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 3. Backend -->
+  <h2>3. Backend — Server &amp; API Layer</h2>
+  <p>Bayzara has <strong>no traditional backend server</strong>. Instead it uses Next.js's built-in server capabilities and Supabase's managed infrastructure.</p>
+
+  <h3>Next.js Server Components (Primary Data Layer)</h3>
+  <p>The majority of data fetching happens in <strong>React Server Components</strong> — these run on Vercel's servers, query Supabase directly, and return fully rendered HTML to the browser. There is no separate REST API for page data.</p>
+
+  <h3>Next.js API Routes (Action Layer)</h3>
+  <p>Sensitive operations that cannot run in the browser are handled by API routes at <code>/app/api/</code>:</p>
+  <table>
+    <thead><tr><th>Route</th><th>Method</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/business/create</code></td><td>POST</td><td>Creates a new business, adds the owner as super_admin, creates default pipeline and document sequences. Uses service role key to bypass RLS on first membership insert.</td></tr>
+      <tr><td><code>/api/evc/connect</code></td><td>POST</td><td>Authenticates with Hormud merchant API, fetches balance and account details, stores EVC connection.</td></tr>
+      <tr><td><code>/api/evc/activate</code></td><td>POST</td><td>Activates the EVC connection and creates a linked payment account.</td></tr>
+      <tr><td><code>/api/pdf/invoice/[id]</code></td><td>GET</td><td>Renders a print-ready HTML invoice page. Opening this URL and printing gives a PDF.</td></tr>
+      <tr><td><code>/api/auth/callback</code></td><td>GET</td><td>OAuth callback handler for Google login (exchanges code for session).</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Middleware</h3>
+  <p>A Next.js middleware file runs on <strong>every request</strong> before the page loads. It handles:</p>
+  <ul style="padding-left:20px; margin:8px 0; line-height:2.2; font-size:13px; color:#333;">
+    <li>Refreshing the user's Supabase session cookie on each request</li>
+    <li>Redirecting unauthenticated users away from protected routes (<code>/app/*</code>, <code>/onboarding</code>)</li>
+    <li>Redirecting already-logged-in users away from <code>/login</code> and <code>/signup</code></li>
+    <li>Allowing public routes (<code>/i/*</code> public invoice links, <code>/api/*</code>) to pass through freely</li>
+  </ul>
+
+  <!-- 4. Database -->
+  <h2>4. Database — Schema &amp; Structure</h2>
+  <p>Bayzara uses <strong>PostgreSQL</strong> hosted on Supabase. The database has 15 tables and is protected by Row Level Security (RLS) policies that ensure each business can only access its own data.</p>
+
+  <h3>All Database Tables</h3>
+  <div class="db-grid">
+    <div class="db-item">profiles</div>
+    <div class="db-item">businesses</div>
+    <div class="db-item">business_users</div>
+    <div class="db-item">pipelines</div>
+    <div class="db-item">clients</div>
+    <div class="db-item">vendors</div>
+    <div class="db-item">document_sequences</div>
+    <div class="db-item">documents</div>
+    <div class="db-item">line_items</div>
+    <div class="db-item">payment_accounts</div>
+    <div class="db-item">payment_records</div>
+    <div class="db-item">evc_connections</div>
+    <div class="db-item">evc_transactions</div>
+    <div class="db-item">inventory_items</div>
+    <div class="db-item">leads</div>
+  </div>
+
+  <h3>Key Table Relationships</h3>
+  <table>
+    <thead><tr><th>Table</th><th>Description</th><th>Key Relationships</th></tr></thead>
+    <tbody>
+      <tr><td><strong>profiles</strong></td><td>One row per registered user. Stores name, email, phone, avatar, platform admin flag.</td><td>Extends Supabase auth.users (1-to-1)</td></tr>
+      <tr><td><strong>businesses</strong></td><td>Each business on the platform. Has slug, name, logo, country, currency, plan, tax settings, bank details.</td><td>Owned by one profile</td></tr>
+      <tr><td><strong>business_users</strong></td><td>Junction table — maps users to businesses with a role (super_admin, admin, member).</td><td>Many users ↔ Many businesses</td></tr>
+      <tr><td><strong>documents</strong></td><td>The largest table. Stores all invoices, quotations, purchase orders, receipts, credit notes. One row per document.</td><td>Belongs to business, client or vendor</td></tr>
+      <tr><td><strong>line_items</strong></td><td>Individual line items for each document. Each invoice can have many line items.</td><td>Belongs to document</td></tr>
+      <tr><td><strong>evc_connections</strong></td><td>Stores Hormud EVC merchant credentials (encrypted), session tokens, balance, sync status.</td><td>Belongs to business</td></tr>
+      <tr><td><strong>evc_transactions</strong></td><td>Every EVC payment received. Tracks sender, amount, match status, whether recorded.</td><td>Belongs to business, optionally linked to client and document</td></tr>
+      <tr><td><strong>payment_records</strong></td><td>Records of payments made against invoices — EVC, cash, bank transfer.</td><td>Belongs to document and payment_account</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Row Level Security (RLS)</h3>
+  <p>Every table has RLS enabled. The central helper function <code>is_business_member(business_id)</code> is used across all policies — it checks whether the currently logged-in user has a record in <code>business_users</code> for the given business. No data from one business can ever be read or modified by another business's users.</p>
+
+  <h3>Database Functions</h3>
+  <table>
+    <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>is_business_member(uuid)</code></td><td>Returns true if the current user is a member of the given business. Used in all RLS policies.</td></tr>
+      <tr><td><code>get_next_document_number()</code></td><td>Atomically generates the next sequential document number (e.g. INV-0042) using the document_sequences table. Thread-safe.</td></tr>
+      <tr><td><code>mark_overdue_invoices()</code></td><td>Scans all sent invoices past their due date and updates their status to "overdue."</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 5. Auth -->
+  <h2>5. Authentication &amp; Security</h2>
+
+  <h3>Authentication Provider</h3>
+  <p><strong>Supabase Auth</strong> handles all authentication. It manages user registration, login, password hashing, session tokens (JWTs), and OAuth. Bayzara supports:</p>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-badge green">Active</div>
+      <div class="card-title">Email + Password</div>
+      <div class="card-body">Standard signup and login. Email confirmation is optional (currently disabled for faster testing). Passwords are hashed by Supabase using bcrypt.</div>
+    </div>
+    <div class="card">
+      <div class="card-badge gold">Configured</div>
+      <div class="card-title">Google OAuth</div>
+      <div class="card-body">One-click Google sign-in. Configured via Supabase Auth providers. Callback handled at <code>/auth/callback</code>.</div>
+    </div>
+  </div>
+
+  <h3>Session Management</h3>
+  <p>Sessions are managed using <strong>HTTP-only cookies</strong> via the <code>@supabase/ssr</code> package. This is more secure than localStorage (cookies cannot be accessed by JavaScript, preventing XSS attacks). The middleware refreshes the session on every request.</p>
+
+  <h3>Role-Based Access</h3>
+  <table>
+    <thead><tr><th>Role</th><th>Scope</th><th>Permissions</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Platform Admin</strong></td><td>Entire platform</td><td>Access to <code>/admin</code> — can see all businesses, all users, platform revenue. Set via <code>is_platform_admin</code> flag on profiles table.</td></tr>
+      <tr><td><strong>super_admin</strong></td><td>One business</td><td>Full access to all features of their business. Can manage team members.</td></tr>
+      <tr><td><strong>admin</strong></td><td>One business</td><td>Can manage documents, clients, vendors, inventory. Cannot change billing or owner settings.</td></tr>
+      <tr><td><strong>member</strong></td><td>One business</td><td>Read and create access. Cannot delete or change settings.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 6. Storage -->
+  <h2>6. File Storage</h2>
+  <p><strong>Supabase Storage</strong> (built on S3-compatible object storage) handles all file uploads:</p>
+  <table>
+    <thead><tr><th>Bucket</th><th>Contents</th><th>Access</th></tr></thead>
+    <tbody>
+      <tr><td><code>business-logos</code></td><td>Business logo images uploaded during onboarding or settings</td><td>Public (logos shown on invoices)</td></tr>
+      <tr><td><code>avatars</code></td><td>User profile pictures</td><td>Public</td></tr>
+      <tr><td><code>documents</code></td><td>Uploaded PDF attachments for documents</td><td>Private (business members only)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 7. EVC -->
+  <h2>7. EVC Plus Integration (Hormud)</h2>
+  <p>Bayzara has native, deep integration with <strong>Hormud EVC Plus</strong> — Somalia's most widely used mobile money system. This is a core differentiator of the platform.</p>
+
+  <h3>Integration Architecture</h3>
+  <div class="flow">
+    <div class="flow-box">Bayzara App</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">/api/evc/connect</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box gold">Hormud Merchant API</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">EVC Transactions</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Auto-Match Invoices</div>
+  </div>
+
+  <h3>What the Integration Does</h3>
+  <table>
+    <thead><tr><th>Feature</th><th>How It Works</th></tr></thead>
+    <tbody>
+      <tr><td>Merchant Login</td><td>Server-side API call to <code>merchant.hormuud.com/api/account/login</code>. Returns session token + cookie stored securely.</td></tr>
+      <tr><td>Balance Sync</td><td>Current EVC wallet balance fetched and stored in <code>evc_connections.current_balance</code>. Updated every 60 seconds.</td></tr>
+      <tr><td>Transaction Import</td><td>Up to 50 new transactions fetched per sync cycle. Deduplicated by <code>tran_id</code> — never imported twice.</td></tr>
+      <tr><td>Auto-Matching</td><td>Sender phone compared against client <code>evc_phone</code> field. If matched, linked to oldest open invoice.</td></tr>
+      <tr><td>Auto-Recording</td><td>If amount matches invoice exactly → payment auto-recorded, invoice marked paid. No manual action needed.</td></tr>
+      <tr><td>Needs Review Queue</td><td>Unmatched or ambiguous transactions are flagged and shown in the EVC Hub for manual assignment.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 8. Edge Functions -->
+  <h2>8. Background Jobs &amp; Edge Functions</h2>
+  <p>Long-running or scheduled tasks run as <strong>Supabase Edge Functions</strong> — serverless Deno functions deployed directly to Supabase's infrastructure, close to the database.</p>
+
+  <table>
+    <thead><tr><th>Function</th><th>Runtime</th><th>Schedule</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>evc-sync</code></td><td>Deno (TypeScript)</td><td>Every 60 seconds</td><td>Polls Hormud API for all active EVC connections, imports new transactions, auto-matches to clients and invoices, updates balances.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="notice">
+    <strong>Deployment note:</strong> Edge Functions are separate from the Next.js app. They must be deployed to Supabase using <code>supabase functions deploy evc-sync</code> and scheduled using a cron trigger. This step is required for automatic EVC sync to activate.
+  </div>
+
+  <h3>Email Notifications (Configured)</h3>
+  <p><strong>Resend</strong> is integrated for transactional emails — invoice delivery, payment confirmations, team invitations. The API key is stored in environment variables. Email templates use Bayzara's brand colors.</p>
+
+  <!-- 9. Hosting -->
+  <h2>9. Hosting &amp; Deployment</h2>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-badge">Frontend + API</div>
+      <div class="card-title">Vercel</div>
+      <div class="card-body">The entire Next.js application is deployed on Vercel. Every push to the <code>main</code> branch on GitHub automatically triggers a new production deployment. Vercel handles SSL, CDN, serverless functions, and global edge network.</div>
+    </div>
+    <div class="card">
+      <div class="card-badge green">Database + Auth + Storage</div>
+      <div class="card-title">Supabase</div>
+      <div class="card-body">Fully managed PostgreSQL database, authentication service, file storage, and edge function runtime. Hosted on AWS (us-east-1). No server management required.</div>
+    </div>
+    <div class="card">
+      <div class="card-badge gold">Source Control</div>
+      <div class="card-title">GitHub</div>
+      <div class="card-body">All source code is version-controlled on GitHub at <code>github.com/idbac25/Bayzara</code>. Commits to main trigger automatic Vercel deployments.</div>
+    </div>
+    <div class="card">
+      <div class="card-badge purple">DNS + Domains</div>
+      <div class="card-title">Vercel Domains</div>
+      <div class="card-body">Current public URL: <code>bayzara-git-main-cabdi-ladiifs-projects.vercel.app</code>. Custom domain can be added via Vercel Dashboard → Settings → Domains.</div>
+    </div>
+  </div>
+
+  <h3>CI/CD Pipeline</h3>
+  <div class="flow">
+    <div class="flow-box gray">Developer writes code</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box gray">git push to main</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">GitHub</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box gold">Vercel builds</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">Live in ~60s</div>
+  </div>
+
+  <!-- 10. Modules -->
+  <h2>10. Application Modules</h2>
+
+  <div class="module-row">
+    <div class="module-icon">📊</div>
+    <div><div class="module-name">Dashboard</div><div class="module-desc">Monthly revenue stats, outstanding invoices, EVC balance, recent transactions at a glance.</div><div class="module-path">/app/[slug]/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">🧾</div>
+    <div><div class="module-name">Invoices</div><div class="module-desc">Full invoice lifecycle — create, edit, send, record payments, mark overdue, view payment history. Supports line items, taxes, discounts, bank details.</div><div class="module-path">/app/[slug]/invoices/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">📋</div>
+    <div><div class="module-name">Quotations</div><div class="module-desc">Create quotations/proforma invoices. One-click "Convert to Invoice" action.</div><div class="module-path">/app/[slug]/quotations/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">👥</div>
+    <div><div class="module-name">Clients</div><div class="module-desc">Client CRM — name, contact, EVC phone, industry, type (client/prospect), payment history, all linked documents.</div><div class="module-path">/app/[slug]/clients/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">🏭</div>
+    <div><div class="module-name">Vendors</div><div class="module-desc">Supplier management with contact details, purchase history, and archiving.</div><div class="module-path">/app/[slug]/vendors/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">🛒</div>
+    <div><div class="module-name">Purchases</div><div class="module-desc">Bills, expenses, and purchase orders from vendors. Mirrors the invoice module for the buy side.</div><div class="module-path">/app/[slug]/purchases/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">📦</div>
+    <div><div class="module-name">Inventory</div><div class="module-desc">Product and service catalog with stock quantities, reorder alerts, sale/purchase pricing, SKU tracking.</div><div class="module-path">/app/[slug]/inventory/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">📡</div>
+    <div><div class="module-name">EVC Plus Hub</div><div class="module-desc">Live EVC wallet balance, incoming transaction feed, auto-match status, "Needs Review" queue for manual assignment.</div><div class="module-path">/app/[slug]/evc/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">🏦</div>
+    <div><div class="module-name">Bank Accounts</div><div class="module-desc">Manage multiple payment accounts — bank, cash, EVC, card. Each linked to a payment_accounts record.</div><div class="module-path">/app/[slug]/bank-accounts/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">🎯</div>
+    <div><div class="module-name">CRM / Leads</div><div class="module-desc">Kanban and list view pipeline. Track leads by stage, deal value, source, contact person. Convert won leads to clients.</div><div class="module-path">/app/[slug]/leads/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">📈</div>
+    <div><div class="module-name">Reports</div><div class="module-desc">Income vs expenses bar charts, AR aging report, EVC monthly payment summary. Pure CSS charts — no external dependencies.</div><div class="module-path">/app/[slug]/reports/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">⚙️</div>
+    <div><div class="module-name">Settings</div><div class="module-desc">Business profile, financial settings, bank details, document numbering sequences, team member management — all in one tabbed page.</div><div class="module-path">/app/[slug]/settings/</div></div>
+  </div>
+  <div class="module-row">
+    <div class="module-icon">🔐</div>
+    <div><div class="module-name">Platform Admin</div><div class="module-desc">Super admin portal for Bayzara operators — all businesses, all users, platform revenue, plan breakdown, admin privileges toggle.</div><div class="module-path">/admin/</div></div>
+  </div>
+  <div class="module-row" style="border-bottom:none;">
+    <div class="module-icon">🔗</div>
+    <div><div class="module-name">Public Invoice Links</div><div class="module-desc">Every invoice has a shareable public URL. Clients can view their invoice without logging in. Auto-prints when opened.</div><div class="module-path">/i/[public_token]</div></div>
+  </div>
+
+  <!-- 11. Request Flow -->
+  <h2>11. Request Flow — End to End</h2>
+  <p>Here is what happens technically when a user opens an invoice page:</p>
+
+  <table>
+    <thead><tr><th>#</th><th>Step</th><th>Where it happens</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>User navigates to <code>/app/my-biz/invoices</code></td><td>Browser</td></tr>
+      <tr><td>2</td><td>Middleware runs — checks session cookie, refreshes JWT, verifies user is authenticated</td><td>Vercel Edge Network</td></tr>
+      <tr><td>3</td><td><code>[slug]/layout.tsx</code> runs — fetches business record and user membership from Supabase using admin client</td><td>Vercel Server</td></tr>
+      <tr><td>4</td><td><code>invoices/page.tsx</code> runs — queries documents table for all invoices in this business</td><td>Vercel Server → Supabase PostgreSQL</td></tr>
+      <tr><td>5</td><td>RLS policies on Supabase validate the query — only returns rows where <code>business_id</code> matches and user is a member</td><td>Supabase PostgreSQL</td></tr>
+      <tr><td>6</td><td>Server component renders the full HTML with data and sends to browser</td><td>Vercel Server</td></tr>
+      <tr><td>7</td><td>Browser renders the page — React hydrates interactive elements (search, filters, modals)</td><td>Browser</td></tr>
+      <tr><td>8</td><td>User creates an invoice — React Hook Form collects data, Supabase JS client sends INSERT to Supabase</td><td>Browser → Supabase REST API</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 12. Env Vars -->
+  <h2>12. Environment Variables</h2>
+  <table>
+    <thead><tr><th>Variable</th><th>Where Used</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>NEXT_PUBLIC_SUPABASE_URL</code></td><td>Client + Server</td><td>Your Supabase project URL (publicly safe)</td></tr>
+      <tr><td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td><td>Client + Server</td><td>Supabase publishable key — safe for browser use with RLS enabled</td></tr>
+      <tr><td><code>SUPABASE_SERVICE_ROLE_KEY</code></td><td>Server only</td><td>Supabase secret key — bypasses RLS. Never exposed to browser.</td></tr>
+      <tr><td><code>NEXT_PUBLIC_APP_URL</code></td><td>Client</td><td>Base URL of the deployed app (used for generating public invoice links)</td></tr>
+      <tr><td><code>HORMUD_API_BASE</code></td><td>Server only</td><td>Hormud merchant API base URL</td></tr>
+      <tr><td><code>RESEND_API_KEY</code></td><td>Server only</td><td>Email sending via Resend</td></tr>
+      <tr><td><code>GOOGLE_CLIENT_ID</code></td><td>Server only</td><td>Google OAuth app ID</td></tr>
+      <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td>Server only</td><td>Google OAuth app secret</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tip">
+    <strong>Security note:</strong> Variables prefixed with <code>NEXT_PUBLIC_</code> are baked into the JavaScript bundle at build time and visible to anyone. All sensitive keys (service role, API keys, OAuth secrets) must NOT have this prefix and are only accessible on Vercel's servers.
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Bayzara · Technology Stack Document · Version 1.0 · March 2026<br>
+    Confidential — For internal and investor use only
+  </div>
+
+</div>
+</body>
+</html>

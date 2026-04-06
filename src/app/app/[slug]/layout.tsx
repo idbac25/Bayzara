@@ -24,7 +24,7 @@ export default async function AppLayout({ children, params }: Props) {
   // Use admin client to bypass RLS — user identity validated above
   const { data: business } = await admin
     .from('businesses')
-    .select('id, slug, name, logo_url, email, phone, address_line1, address_line2, city, state, country, postal_code, currency, timezone, fiscal_year_start, tax_type, default_tax_rate, bank_account_name, bank_account_number, bank_name, default_terms, plan, plan_expires_at, owner_id, features, created_at, updated_at')
+    .select('id, slug, name, logo_url, email, phone, address_line1, address_line2, city, state, country, postal_code, currency, timezone, fiscal_year_start, tax_type, default_tax_rate, bank_account_name, bank_account_number, bank_name, default_terms, plan, plan_expires_at, owner_id, features, mode, created_at, updated_at')
     .eq('slug', slug)
     .maybeSingle()
 

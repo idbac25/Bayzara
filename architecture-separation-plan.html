@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bayzara – Backend Separation & API-First Architecture Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; background: #fff; font-size: 13.5px; }
+  .page { max-width: 780px; margin: 0 auto; padding: 60px 50px; }
+
+  .header { border-bottom: 3px solid #0F4C81; padding-bottom: 24px; margin-bottom: 40px; }
+  .logo { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .logo-icon { width: 46px; height: 46px; border-radius: 11px; background: linear-gradient(135deg, #F5A623, #e09520); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 24px; color: #000; }
+  .logo-name { font-size: 28px; font-weight: 800; color: #0F4C81; }
+  .doc-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-top: 4px; }
+  .doc-meta { color: #777; font-size: 12px; margin-top: 4px; }
+
+  .toc { background: #f7faff; border: 1px solid #d0e0f0; border-radius: 10px; padding: 20px 26px; margin-bottom: 40px; }
+  .toc-title { font-weight: 700; color: #0F4C81; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .toc ol { padding-left: 18px; }
+  .toc li { font-size: 13px; color: #0F4C81; line-height: 2.2; }
+
+  h2 { font-size: 16px; font-weight: 700; color: #0F4C81; margin: 40px 0 14px; padding: 10px 16px; background: #f0f6ff; border-left: 4px solid #0F4C81; border-radius: 0 6px 6px 0; }
+  h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin: 22px 0 8px; }
+  h4 { font-size: 13px; font-weight: 700; color: #555; margin: 14px 0 6px; }
+  p { line-height: 1.85; color: #333; margin-bottom: 10px; }
+  ul, ol { padding-left: 20px; margin: 8px 0 12px; }
+  li { line-height: 2.1; color: #333; font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 20px; font-size: 12.5px; }
+  th { background: #0F4C81; color: #fff; padding: 9px 13px; text-align: left; font-weight: 600; font-size: 12px; }
+  td { padding: 9px 13px; border-bottom: 1px solid #e8edf5; vertical-align: top; line-height: 1.7; }
+  tr:nth-child(even) td { background: #f7faff; }
+
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .card { background: #f7faff; border: 1px solid #d0e0f0; border-radius: 8px; padding: 14px 16px; }
+  .card.red { background: #fff5f5; border-color: #fecaca; }
+  .card.green { background: #f0fdf4; border-color: #bbf7d0; }
+  .card-badge { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 7px; margin-bottom: 6px; }
+  .badge-blue { background: #0F4C81; color: #fff; }
+  .badge-gold { background: #F5A623; color: #000; }
+  .badge-green { background: #27AE60; color: #fff; }
+  .badge-red { background: #E74C3C; color: #fff; }
+  .badge-purple { background: #8B5CF6; color: #fff; }
+  .badge-gray { background: #64748b; color: #fff; }
+  .card-title { font-weight: 700; font-size: 13px; color: #1a1a2e; margin-bottom: 5px; }
+  .card-body { font-size: 12.5px; color: #444; line-height: 1.65; }
+
+  .arch-box { border: 2px solid #d0e0f0; border-radius: 10px; padding: 20px; margin: 16px 0; background: #f7faff; }
+  .arch-title { font-weight: 700; font-size: 13px; color: #0F4C81; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .arch-row { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+  .arch-node { border-radius: 8px; padding: 10px 16px; font-size: 12px; font-weight: 600; text-align: center; min-width: 110px; }
+  .node-blue { background: #0F4C81; color: #fff; }
+  .node-gold { background: #F5A623; color: #000; }
+  .node-green { background: #27AE60; color: #fff; }
+  .node-purple { background: #8B5CF6; color: #fff; }
+  .node-gray { background: #64748b; color: #fff; }
+  .node-outline { background: #fff; color: #0F4C81; border: 2px solid #0F4C81; }
+  .arch-arrow { color: #94a3b8; font-size: 20px; font-weight: 300; }
+  .arch-line { width: 100%; height: 1px; background: #d0e0f0; margin: 8px 0; }
+  .arch-label { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 4px; }
+
+  .step-list { counter-reset: steps; margin: 14px 0; }
+  .step { counter-increment: steps; display: flex; gap: 14px; margin-bottom: 14px; }
+  .step-num { background: #0F4C81; color: #fff; font-weight: 700; font-size: 13px; border-radius: 50%; min-width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .step-content { flex: 1; }
+  .step-title { font-weight: 700; font-size: 13px; color: #1a1a2e; margin-bottom: 3px; }
+  .step-body { font-size: 12.5px; color: #555; line-height: 1.7; }
+
+  code { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 6px; font-family: 'Courier New', monospace; font-size: 11.5px; color: #1e40af; }
+  .code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 8px; padding: 16px 20px; margin: 12px 0; font-family: 'Courier New', monospace; font-size: 11.5px; line-height: 1.9; }
+  .cm { color: #6c7086; }
+  .kw { color: #cba6f7; }
+  .st { color: #a6e3a1; }
+  .fn { color: #89b4fa; }
+  .num { color: #fab387; }
+
+  .notice { background: #fff8ee; border-left: 4px solid #F5A623; padding: 13px 17px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 12.5px; line-height: 1.75; }
+  .tip { background: #e8f5e9; border-left: 4px solid #27AE60; padding: 13px 17px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 12.5px; line-height: 1.75; }
+  .danger { background: #fff5f5; border-left: 4px solid #E74C3C; padding: 13px 17px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 12.5px; line-height: 1.75; }
+
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .compare-col { border-radius: 8px; padding: 16px; }
+  .compare-col.before { background: #fff5f5; border: 1px solid #fecaca; }
+  .compare-col.after { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .compare-head { font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+  .compare-head.before { color: #dc2626; }
+  .compare-head.after { color: #16a34a; }
+  .compare-item { font-size: 12.5px; color: #444; line-height: 2; padding-left: 4px; }
+
+  .timeline { margin: 16px 0; }
+  .timeline-item { display: flex; gap: 16px; margin-bottom: 6px; }
+  .timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: #0F4C81; margin-top: 4px; min-width: 12px; }
+  .timeline-dot.gold { background: #F5A623; }
+  .timeline-dot.green { background: #27AE60; }
+  .timeline-dot.gray { background: #94a3b8; }
+  .timeline-line { width: 2px; background: #e2e8f0; margin: 0 5px; }
+  .timeline-content { flex: 1; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9; margin-bottom: 2px; }
+  .timeline-phase { font-weight: 700; font-size: 13px; color: #0F4C81; }
+  .timeline-phase.gold { color: #92400e; }
+  .timeline-phase.green { color: #065f46; }
+  .timeline-desc { font-size: 12.5px; color: #555; margin-top: 3px; line-height: 1.7; }
+
+  .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #999; text-align: center; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { padding: 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">B</div>
+      <div class="logo-name">Bayzara</div>
+    </div>
+    <div class="doc-title">Backend Separation &amp; API-First Architecture Plan</div>
+    <div class="doc-meta">CTO Recommendation Document &nbsp;·&nbsp; 2026 Best Practices &nbsp;·&nbsp; Confidential</div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <ol>
+      <li>Executive Summary</li>
+      <li>Current Architecture — What We Have Now</li>
+      <li>The Problem With the Current Approach</li>
+      <li>Target Architecture — API-First Design</li>
+      <li>Recommended Stack for the Separate Backend</li>
+      <li>How the Mobile App Connects</li>
+      <li>What Changes in the Current Web App</li>
+      <li>What Stays the Same (Supabase)</li>
+      <li>Migration Roadmap — Phase by Phase</li>
+      <li>Cost &amp; Infrastructure</li>
+    </ol>
+  </div>
+
+  <!-- 1. Executive Summary -->
+  <h2>1. Executive Summary</h2>
+  <p>Currently Bayzara is built as a <strong>monolith</strong> — the frontend (what users see) and backend (business logic, data access) are mixed together in one Next.js application. This works fine for a web app, but it creates a wall when you want to add a mobile app, third-party integrations, or a separate admin panel.</p>
+
+  <p>The CTO's recommendation is to adopt an <strong>API-First architecture</strong> — build a dedicated backend API that speaks a universal language (REST or GraphQL) that any client can connect to: the web app, the mobile app, a desktop app, or even third-party tools.</p>
+
+  <div class="tip">
+    <strong>Simple analogy:</strong> Right now, the kitchen and the dining room are the same room. The CTO wants to build a proper kitchen (backend API) with a serving hatch — the web app and mobile app both order food through the same hatch, getting the same menu, the same quality, from one place.
+  </div>
+
+  <!-- 2. Current Architecture -->
+  <h2>2. Current Architecture — What We Have Now</h2>
+
+  <div class="arch-box">
+    <div class="arch-title">Current: Monolithic Next.js App</div>
+    <div class="arch-row">
+      <div class="arch-node node-outline">Browser</div>
+      <div class="arch-arrow">⟷</div>
+      <div class="arch-node node-blue">Next.js App<br><small style="font-weight:400;font-size:10px;">Frontend + Backend mixed</small></div>
+      <div class="arch-arrow">⟷</div>
+      <div class="arch-node node-gold">Supabase<br><small style="font-weight:400;font-size:10px;">DB + Auth + Storage</small></div>
+    </div>
+    <div class="arch-label" style="margin-top:12px;">Everything is in one place. A mobile app cannot connect here — it needs a separate API.</div>
+  </div>
+
+  <p>In the current setup, the Next.js app does three jobs at once:</p>
+  <ul>
+    <li><strong>Renders pages</strong> — converts data into HTML for the browser</li>
+    <li><strong>Runs business logic</strong> — invoice creation, EVC matching, user access control</li>
+    <li><strong>Accesses the database</strong> — queries Supabase directly from Server Components</li>
+  </ul>
+  <p>This is common and perfectly valid for a web-only app. The limitation appears the moment you want a second client (mobile app) to use the same data and logic.</p>
+
+  <!-- 3. The Problem -->
+  <h2>3. The Problem With the Current Approach</h2>
+
+  <div class="card-grid">
+    <div class="card red">
+      <div class="card-badge badge-red">Problem</div>
+      <div class="card-title">Mobile app has nowhere to connect</div>
+      <div class="card-body">A React Native or Flutter mobile app cannot run Next.js Server Components. It needs a URL-based API (REST or GraphQL) to call. Currently that doesn't exist as a standalone service.</div>
+    </div>
+    <div class="card red">
+      <div class="card-badge badge-red">Problem</div>
+      <div class="card-title">Business logic is tied to the web UI</div>
+      <div class="card-body">Logic like "auto-match EVC payment to invoice" or "generate document number" lives inside Next.js API routes that are tightly coupled to the web deployment. Changes to logic require redeploying the whole frontend.</div>
+    </div>
+    <div class="card red">
+      <div class="card-badge badge-red">Problem</div>
+      <div class="card-title">Cannot scale independently</div>
+      <div class="card-body">If API traffic spikes (e.g. lots of EVC syncing), you cannot scale just the API — you would have to scale the entire Next.js app including all the HTML rendering.</div>
+    </div>
+    <div class="card red">
+      <div class="card-badge badge-red">Problem</div>
+      <div class="card-title">Hard for third-party integrations</div>
+      <div class="card-body">If a partner wants to connect their system to Bayzara's data (e.g. an accounting app, a bank), there is no clean API endpoint they can call — they would have to scrape the web app.</div>
+    </div>
+  </div>
+
+  <!-- 4. Target Architecture -->
+  <h2>4. Target Architecture — API-First Design</h2>
+
+  <div class="arch-box">
+    <div class="arch-title">Target: Separated API-First Architecture</div>
+    <div class="arch-row">
+      <div class="arch-node node-blue">Web App<br><small style="font-weight:400;font-size:10px;">Next.js (frontend only)</small></div>
+      <div style="width:30px;"></div>
+      <div class="arch-node node-purple">Mobile App<br><small style="font-weight:400;font-size:10px;">React Native / Flutter</small></div>
+      <div style="width:30px;"></div>
+      <div class="arch-node node-gray">3rd Party<br><small style="font-weight:400;font-size:10px;">Integrations</small></div>
+    </div>
+    <div class="arch-row" style="margin:4px 0;">
+      <div class="arch-arrow" style="font-size:28px;">↓</div>
+      <div style="width:90px;"></div>
+      <div class="arch-arrow" style="font-size:28px;">↓</div>
+      <div style="width:90px;"></div>
+      <div class="arch-arrow" style="font-size:28px;">↓</div>
+    </div>
+    <div class="arch-row">
+      <div class="arch-node node-gold" style="min-width:340px; padding:14px;">
+        Bayzara Backend API<br>
+        <small style="font-weight:400;font-size:10px;">REST API — Deployed separately — Single source of truth</small>
+      </div>
+    </div>
+    <div class="arch-row" style="margin:4px 0;">
+      <div class="arch-arrow" style="font-size:28px;">↓</div>
+    </div>
+    <div class="arch-row">
+      <div class="arch-node node-green">Supabase<br><small style="font-weight:400;font-size:10px;">PostgreSQL + Auth + Storage</small></div>
+    </div>
+    <div class="arch-label" style="margin-top:12px;">All clients talk to one API. The API is the only thing that touches the database. Clean, scalable, future-proof.</div>
+  </div>
+
+  <!-- 5. Recommended Stack -->
+  <h2>5. Recommended Stack for the Separate Backend</h2>
+  <p>For 2026, the industry has converged on a clear set of technologies for building standalone APIs. Here is the best-fit recommendation for Bayzara:</p>
+
+  <h3>Option A — Recommended: Hono.js on Cloudflare Workers</h3>
+  <div class="arch-box" style="background:#fff8ee; border-color:#f5c97a;">
+    <table style="margin:0;">
+      <thead><tr><th>Layer</th><th>Technology</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>API Framework</strong></td><td>Hono.js</td><td>Ultra-lightweight, TypeScript-first REST framework. 5x faster than Express. Built for serverless edge environments. Familiar syntax if you know Express.</td></tr>
+        <tr><td><strong>Runtime</strong></td><td>Cloudflare Workers</td><td>Runs at the edge (close to users globally). Serverless — no servers to manage. Extremely cheap. Deploys in seconds.</td></tr>
+        <tr><td><strong>Database Client</strong></td><td>Supabase JS SDK or postgres.js</td><td>Connects to the existing Supabase PostgreSQL database. No data migration needed — same database, new access layer.</td></tr>
+        <tr><td><strong>Auth</strong></td><td>Supabase Auth (JWT verification)</td><td>The API verifies the same JWTs that Supabase issues. Mobile and web users log in once, token works everywhere.</td></tr>
+        <tr><td><strong>Validation</strong></td><td>Zod</td><td>Already used in the web app. Same validation schemas can be shared.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Option B — Alternative: Node.js + Fastify on Railway</h3>
+  <div class="arch-box">
+    <table style="margin:0;">
+      <thead><tr><th>Layer</th><th>Technology</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>API Framework</strong></td><td>Fastify</td><td>Node.js framework, 2x faster than Express. Great TypeScript support. More familiar for traditional backend developers.</td></tr>
+        <tr><td><strong>Runtime</strong></td><td>Railway.app</td><td>Simple container hosting. One-click deploy from GitHub. Affordable ($5–20/month). Good for teams that prefer traditional servers.</td></tr>
+        <tr><td><strong>Database</strong></td><td>Supabase PostgreSQL (same DB)</td><td>Connect via the Supabase connection string. No migration needed.</td></tr>
+        <tr><td><strong>Auth</strong></td><td>Supabase Auth JWT verification</td><td>Same as Option A.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tip">
+    <strong>Recommendation:</strong> Go with <strong>Option A (Hono.js + Cloudflare Workers)</strong>. It is the 2026 standard for TypeScript APIs — serverless, globally fast, zero infrastructure management, and Cloudflare's free tier handles millions of requests per month. The team already knows TypeScript so the learning curve is minimal.
+  </div>
+
+  <h3>What the API Looks Like</h3>
+  <p>The backend exposes clean URL endpoints that both the web app and mobile app call:</p>
+  <div class="code-block">
+    <span class="cm">// Bayzara Backend API endpoints</span><br><br>
+    <span class="cm">// Auth</span><br>
+    <span class="kw">POST</span>  /auth/login<br>
+    <span class="kw">POST</span>  /auth/signup<br>
+    <span class="kw">POST</span>  /auth/logout<br><br>
+    <span class="cm">// Businesses</span><br>
+    <span class="kw">GET</span>   /businesses<br>
+    <span class="kw">POST</span>  /businesses<br>
+    <span class="kw">GET</span>   /businesses/<span class="st">:slug</span><br>
+    <span class="kw">PATCH</span> /businesses/<span class="st">:slug</span><br><br>
+    <span class="cm">// Invoices</span><br>
+    <span class="kw">GET</span>   /businesses/<span class="st">:slug</span>/invoices<br>
+    <span class="kw">POST</span>  /businesses/<span class="st">:slug</span>/invoices<br>
+    <span class="kw">GET</span>   /businesses/<span class="st">:slug</span>/invoices/<span class="st">:id</span><br>
+    <span class="kw">PATCH</span> /businesses/<span class="st">:slug</span>/invoices/<span class="st">:id</span><br>
+    <span class="kw">DELETE</span>/businesses/<span class="st">:slug</span>/invoices/<span class="st">:id</span><br><br>
+    <span class="cm">// Clients, Vendors, Inventory, Leads... (same pattern)</span><br><br>
+    <span class="cm">// EVC</span><br>
+    <span class="kw">POST</span>  /businesses/<span class="st">:slug</span>/evc/connect<br>
+    <span class="kw">POST</span>  /businesses/<span class="st">:slug</span>/evc/sync<br>
+    <span class="kw">GET</span>   /businesses/<span class="st">:slug</span>/evc/transactions<br>
+  </div>
+
+  <!-- 6. Mobile App -->
+  <h2>6. How the Mobile App Connects</h2>
+  <p>Once the backend API exists, building a mobile app is straightforward. The mobile app is just another "client" — it calls the same API endpoints as the web app.</p>
+
+  <h3>Recommended Mobile Stack (2026)</h3>
+  <table>
+    <thead><tr><th>Technology</th><th>Role</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><strong>React Native</strong> (with Expo)</td><td>Mobile framework</td><td>Write once in TypeScript/React — runs on both iOS and Android. Your team already knows React from the web app. Massive time and cost saving vs building two separate native apps.</td></tr>
+      <tr><td><strong>Expo</strong></td><td>Build tooling</td><td>Simplifies building, testing, and deploying React Native apps. Over-the-air updates — push bug fixes without going through the App Store review process.</td></tr>
+      <tr><td><strong>React Query (TanStack)</strong></td><td>Data fetching</td><td>Handles API calls, caching, background refresh, loading/error states. Same library can be used on both web and mobile.</td></tr>
+      <tr><td><strong>Supabase JS SDK</strong></td><td>Auth + Realtime</td><td>Supabase has an official React Native SDK. Login, session management, and real-time subscriptions work out of the box on mobile.</td></tr>
+      <tr><td><strong>NativeWind</strong></td><td>Styling</td><td>Tailwind CSS for React Native. Since the web app uses Tailwind, the mobile app uses the same design language.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Authentication Flow on Mobile</h3>
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">User logs in on the mobile app</div>
+        <div class="step-body">Mobile app calls Supabase Auth directly (using the Supabase JS SDK). Supabase returns a JWT access token and refresh token.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">Token is stored securely on the device</div>
+        <div class="step-body">Stored in the device's secure keychain (not plain storage). The Supabase SDK handles this automatically.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">Every API request includes the token</div>
+        <div class="step-body">Mobile app sends <code>Authorization: Bearer [token]</code> with every request to the Bayzara backend API.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">Backend verifies the token</div>
+        <div class="step-body">The Bayzara API verifies the JWT against Supabase's public key. If valid, it extracts the user ID and processes the request. No separate mobile login system needed.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">Token auto-refreshes</div>
+        <div class="step-body">The Supabase SDK silently refreshes expired tokens in the background. The user stays logged in without interruption.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. What Changes -->
+  <h2>7. What Changes in the Current Web App</h2>
+
+  <div class="compare">
+    <div class="compare-col before">
+      <div class="compare-head before">❌ Current (Monolith)</div>
+      <div class="compare-item">• Page fetches data directly from Supabase</div>
+      <div class="compare-item">• Business logic in Server Components</div>
+      <div class="compare-item">• API routes (e.g. /api/evc/connect) in the web app</div>
+      <div class="compare-item">• Service role key used in layout.tsx</div>
+      <div class="compare-item">• Frontend and backend deployed together</div>
+    </div>
+    <div class="compare-col after">
+      <div class="compare-head after">✅ After Separation</div>
+      <div class="compare-item">• Page calls backend API to get data</div>
+      <div class="compare-item">• Business logic lives in the API only</div>
+      <div class="compare-item">• API routes removed from web app</div>
+      <div class="compare-item">• Web app never touches service role key</div>
+      <div class="compare-item">• Frontend and backend deployed independently</div>
+    </div>
+  </div>
+
+  <h3>What the Web App Becomes</h3>
+  <p>The Next.js app is stripped down to a <strong>pure frontend</strong>. It is responsible for:</p>
+  <ul>
+    <li>Rendering pages and components</li>
+    <li>Handling user interactions (clicks, form submissions)</li>
+    <li>Calling the backend API to read and write data</li>
+    <li>Managing UI state (loading, errors, modals)</li>
+  </ul>
+  <p>It is NOT responsible for database access, business rules, or secrets. It becomes a "dumb" client — smart on the screen, but relying entirely on the API for data.</p>
+
+  <!-- 8. What Stays Same -->
+  <h2>8. What Stays the Same (Supabase)</h2>
+  <p>Importantly, <strong>Supabase does not go away</strong>. It remains the core data layer. The key change is that <em>only the backend API talks to Supabase directly</em> — clients no longer query Supabase themselves.</p>
+
+  <table>
+    <thead><tr><th>Supabase Feature</th><th>Still Used?</th><th>By Whom</th></tr></thead>
+    <tbody>
+      <tr><td>PostgreSQL Database</td><td>✅ Yes</td><td>Backend API only</td></tr>
+      <tr><td>Supabase Auth</td><td>✅ Yes</td><td>All clients (web, mobile) — auth is a shared service</td></tr>
+      <tr><td>Supabase Storage</td><td>✅ Yes</td><td>Backend API + direct client uploads (logos, avatars)</td></tr>
+      <tr><td>Row Level Security</td><td>✅ Yes</td><td>Still a safety net on the database</td></tr>
+      <tr><td>Edge Functions</td><td>✅ Yes</td><td>Background jobs (EVC sync cron)</td></tr>
+      <tr><td>Realtime subscriptions</td><td>✅ Yes</td><td>Web and mobile clients can subscribe for live updates</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 9. Migration Roadmap -->
+  <h2>9. Migration Roadmap — Phase by Phase</h2>
+  <p>This does not need to happen all at once. The recommended approach is incremental — keep the app working at every step.</p>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div>
+        <div class="timeline-dot"></div>
+        <div class="timeline-line" style="height:80px;"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="timeline-phase">Phase 1 — Setup the API project (1–2 weeks)</div>
+        <div class="timeline-desc">Create a new repository <code>bayzara-api</code>. Set up Hono.js with Cloudflare Workers. Configure connection to existing Supabase database. Implement JWT middleware for auth. Deploy a "hello world" endpoint. No changes to the web app yet.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div>
+        <div class="timeline-dot gold"></div>
+        <div class="timeline-line" style="height:90px;"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="timeline-phase gold">Phase 2 — Migrate core API routes (2–3 weeks)</div>
+        <div class="timeline-desc">Move the existing Next.js API routes (<code>/api/business/create</code>, <code>/api/evc/connect</code>, <code>/api/evc/activate</code>) into the new API. Update the web app to call the new API URLs instead. Test thoroughly. This is the most critical phase.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div>
+        <div class="timeline-dot gold"></div>
+        <div class="timeline-line" style="height:90px;"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="timeline-phase gold">Phase 3 — Add full CRUD endpoints (3–4 weeks)</div>
+        <div class="timeline-desc">Build REST endpoints for all modules: invoices, clients, vendors, inventory, leads, reports. The web app's Server Components are refactored to call these endpoints instead of querying Supabase directly. The service role key moves to the API only.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div>
+        <div class="timeline-dot green"></div>
+        <div class="timeline-line" style="height:80px;"></div>
+      </div>
+      <div class="timeline-content">
+        <div class="timeline-phase green">Phase 4 — Mobile app development (6–10 weeks)</div>
+        <div class="timeline-desc">Start building the React Native mobile app. Since the API is already fully built and tested by the web app, the mobile app just needs to call the same endpoints. Authentication works out of the box via Supabase JWT. Focus on mobile-specific UX.</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div>
+        <div class="timeline-dot green"></div>
+      </div>
+      <div class="timeline-content" style="border:none;">
+        <div class="timeline-phase green">Phase 5 — API versioning &amp; documentation (1 week)</div>
+        <div class="timeline-desc">Add API versioning (<code>/v1/</code> prefix). Generate API documentation using OpenAPI/Swagger. This makes it easy to onboard new developers, build third-party integrations, and maintain the API as it grows.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Cost -->
+  <h2>10. Cost &amp; Infrastructure</h2>
+
+  <table>
+    <thead><tr><th>Service</th><th>What It Runs</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Vercel</strong></td><td>Next.js web app (frontend only)</td><td>Free tier covers most usage. Pro plan $20/month for teams.</td></tr>
+      <tr><td><strong>Cloudflare Workers</strong></td><td>Bayzara backend API</td><td>Free tier: 100,000 requests/day. Paid: $5/month for 10 million requests. Extremely cost-effective.</td></tr>
+      <tr><td><strong>Supabase</strong></td><td>PostgreSQL + Auth + Storage + Edge Functions</td><td>Free tier available. Pro plan $25/month for production use.</td></tr>
+      <tr><td><strong>GitHub</strong></td><td>Two repositories (web + api)</td><td>Free for public/private repos.</td></tr>
+      <tr><td><strong>Expo (mobile)</strong></td><td>Mobile app build &amp; deployment</td><td>Free tier for development. $99/month for production app store builds.</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Total estimated monthly cost at launch:</strong> <strong style="color:#0F4C81;">$50–120/month</strong> for the full platform (web + API + mobile + database). This scales gradually as user volume grows.</p>
+
+  <div class="notice">
+    <strong>Important:</strong> The current web app does NOT need to be rebuilt from scratch. The migration is incremental — each module is moved one at a time while the app stays live. The database and all existing data remain completely untouched throughout the migration.
+  </div>
+
+  <h3>Two Repositories, One Platform</h3>
+  <div class="code-block">
+    github.com/idbac25/<span class="fn">Bayzara</span>          <span class="cm">← Web app (current repo, becomes frontend-only)</span><br>
+    github.com/idbac25/<span class="fn">bayzara-api</span>      <span class="cm">← New backend API (Hono.js + Cloudflare Workers)</span><br><br>
+    <span class="cm">Both share the same Supabase project (same database, same auth)</span><br>
+    <span class="cm">Each deployed independently on its own platform</span><br>
+    <span class="cm">Changes to one do not require redeploying the other</span>
+  </div>
+
+  <div class="tip">
+    <strong>Bottom line for the CTO:</strong> The current Bayzara codebase is well-structured and the separation is achievable without a rewrite. The recommended path — Hono.js API on Cloudflare Workers — is the 2026 industry standard for TypeScript backends, is extremely affordable, and gives you a clean foundation that the mobile app (React Native + Expo) can connect to immediately once Phase 3 is complete.
+  </div>
+
+  <div class="footer">
+    Bayzara · Backend Separation &amp; Architecture Plan · March 2026<br>
+    Prepared for CTO Review — Confidential
+  </div>
+
+</div>
+</body>
+</html>

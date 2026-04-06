@@ -60,6 +60,7 @@ export interface Business {
   plan_expires_at: string | null
   owner_id: string
   features: Record<string, boolean | number> | null
+  mode: 'shop' | 'b2b' | 'all'
   created_at: string
   updated_at: string
 }

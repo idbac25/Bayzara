@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npx vercel:*)",
+      "Bash(gh api:*)",
+      "Bash(git push:*)",
+      "Bash(openssl rand:*)",
+      "Bash(npx supabase:*)",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const arr=JSON.parse\\(d\\); arr.slice\\(0,3\\).forEach\\(x=>console.log\\(x.state, x.url, new Date\\(x.created\\).toLocaleTimeString\\(\\)\\)\\)\")",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:wiki.hsnetworkmanager.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:waafipay.net)",
+      "WebFetch(domain:docs.waafipay.com)",
+      "WebFetch(domain:developer.waafipay.net)",
+      "WebFetch(domain:abdorizak.dev)",
+      "WebFetch(domain:pub.dev)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:www.hormuud.com)",
+      "Bash(cat -n src/app/app/[slug]/evc/EVCHubClient.tsx)",
+      "Bash(npx tsc:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"payment_method\\\\|invoiceId\\\\|sale\\\\|submit\\\\|handlePay\" src/app/app/[slug]/pos/POSClient.tsx)",
+      "Bash(grep -n \"select\" src/app/app/[slug]/layout.tsx)"
+    ]
+  }
+}

@@ -15,6 +15,7 @@ interface Business {
   created_at: string
   email: string | null
   suspended_at: string | null
+  mode: 'shop' | 'b2b' | 'all' | null
   member_count: number
   invoice_count: number
   volume: number
@@ -23,6 +24,18 @@ interface Business {
 export function AdminBusinessesClient({ businesses }: { businesses: Business[] }) {
   const [search, setSearch] = useState('')
   const [planFilter, setPlanFilter] = useState('all')
+  const [modes, setModes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(businesses.map(b => [b.id, b.mode ?? 'shop']))
+  )
+
+  const handleModeChange = async (bizId: string, newMode: string) => {
+    setModes(m => ({ ...m, [bizId]: newMode }))
+    await fetch('/api/admin/business-mode', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ business_id: bizId, mode: newMode }),
+    })
+  }
 
   const filtered = businesses.filter(b => {
     const matchSearch = !search ||
@@ -106,6 +119,7 @@ export function AdminBusinessesClient({ businesses }: { businesses: Business[] }
               <th className="text-right px-5 py-3">Members</th>
               <th className="text-right px-5 py-3">Invoices</th>
               <th className="text-right px-5 py-3">Volume</th>
+              <th className="text-left px-5 py-3">Mode</th>
               <th className="text-left px-5 py-3">Joined</th>
               <th className="px-5 py-3"></th>
             </tr>
@@ -132,6 +146,17 @@ export function AdminBusinessesClient({ businesses }: { businesses: Business[] }
                 <td className="px-5 py-3 text-right text-gray-600">{biz.invoice_count}</td>
                 <td className="px-5 py-3 text-right font-medium text-gray-900">
                   {biz.volume > 0 ? formatCurrency(biz.volume, biz.currency ?? 'USD') : '—'}
+                </td>
+                <td className="px-5 py-3">
+                  <select
+                    value={modes[biz.id] ?? 'shop'}
+                    onChange={e => handleModeChange(biz.id, e.target.value)}
+                    className="text-xs border border-gray-200 rounded px-2 py-1 bg-white outline-none"
+                  >
+                    <option value="shop">Shop</option>
+                    <option value="b2b">B2B</option>
+                    <option value="all">All</option>
+                  </select>
                 </td>
                 <td className="px-5 py-3 text-gray-400 text-xs">
                   {new Date(biz.created_at).toLocaleDateString()}
