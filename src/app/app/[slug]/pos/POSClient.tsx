@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -10,10 +10,11 @@ import { Badge } from '@/components/ui/badge'
 import { POSPaymentOverlay, type SenderInfo } from './POSPaymentOverlay'
 import { POSReceipt } from './POSReceipt'
 import { POSCashierLogin } from './POSCashierLogin'
+import { BarcodeScanner } from './BarcodeScanner'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, ArrowLeft,
   Banknote, Zap, CreditCard, User, ChevronDown, Maximize2, Minimize2,
-  UserCircle, RefreshCw
+  UserCircle, RefreshCw, ScanBarcode, ScanLine
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useFeature } from '@/contexts/BusinessContext'
@@ -35,6 +36,7 @@ interface POSItem {
   id: string
   name: string
   sku: string | null
+  barcode: string | null
   unit: string
   sale_price: number
   tax_rate: number
@@ -127,8 +129,13 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
   const [pendingEvcTranId, setPendingEvcTranId] = useState<string | null>(null)
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showCameraScanner, setShowCameraScanner] = useState(false)
   const hasCreditCustomers = useFeature('credit_customers')
   const hasEvcFeature = useFeature('evc_plus')
+
+  // Barcode buffer refs — populated by USB scanner useEffect (defined after addToCart)
+  const barcodeBuffer = useRef('')
+  const barcodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Restore or prompt cashier session on mount
   useEffect(() => {
@@ -234,6 +241,55 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
     setPendingEvcTranId(null)
     setEvcInitiatedAt(null)
   }
+
+  // ── Barcode scanner (USB HID + camera) ────────────────────────────────────
+  const handleBarcodeDetected = useCallback((barcode: string) => {
+    const code = barcode.trim()
+    if (!code) return
+    const match = items.find(i =>
+      (i.barcode && i.barcode.trim() === code) ||
+      (i.sku && i.sku.trim() === code)
+    )
+    if (match) {
+      if (match.stock_quantity != null && match.stock_quantity <= 0) {
+        toast.error(`${match.name} is out of stock`)
+      } else {
+        addToCart(match)
+        toast.success(`Added: ${match.name}`, { duration: 1500 })
+      }
+    } else {
+      toast.error(`No product with barcode: ${code}`, { duration: 2500 })
+    }
+    setShowCameraScanner(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items])
+
+  // USB HID scanner: detects rapid keystroke sequences ending with Enter
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+
+      if (e.key === 'Enter') {
+        const code = barcodeBuffer.current.trim()
+        if (code.length >= 4) handleBarcodeDetected(code)
+        barcodeBuffer.current = ''
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current)
+        return
+      }
+
+      if (e.key.length === 1) {
+        barcodeBuffer.current += e.key
+        if (barcodeTimer.current) clearTimeout(barcodeTimer.current)
+        barcodeTimer.current = setTimeout(() => {
+          if (barcodeBuffer.current.length < 4) barcodeBuffer.current = ''
+        }, 100)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [handleBarcodeDetected])
 
   // ── Sale completion ────────────────────────────────────────────────────────
 
@@ -378,11 +434,18 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                className="pl-9 h-9 text-sm"
-                placeholder="Search products..."
+                className="pl-9 pr-9 h-9 text-sm"
+                placeholder="Search or scan barcode..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+              <button
+                onClick={() => setShowCameraScanner(true)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#0F4C81] transition-colors"
+                title="Scan barcode with camera"
+              >
+                <ScanLine className="h-4 w-4" />
+              </button>
             </div>
             {categories.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -721,6 +784,12 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
         />
       )}
       {posContent}
+      {showCameraScanner && (
+        <BarcodeScanner
+          onDetected={handleBarcodeDetected}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
     </>
   )
 }

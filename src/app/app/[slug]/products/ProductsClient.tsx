@@ -25,6 +25,7 @@ interface Product {
   id: string
   name: string
   sku: string | null
+  barcode: string | null
   description: string | null
   unit: string
   sale_price: number
@@ -67,6 +68,7 @@ function getColor(name: string) {
 const emptyForm = {
   name: '',
   sku: '',
+  barcode: '',
   description: '',
   unit: 'pcs',
   sale_price: '',
@@ -126,6 +128,7 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
     setForm({
       name: p.name,
       sku: p.sku ?? '',
+      barcode: p.barcode ?? '',
       description: p.description ?? '',
       unit: p.unit,
       sale_price: String(p.sale_price),
@@ -183,6 +186,7 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
       const payload = {
         name: form.name.trim(),
         sku: form.sku.trim() || null,
+        barcode: form.barcode.trim() || null,
         description: form.description.trim() || null,
         unit: form.unit,
         sale_price: parseFloat(form.sale_price) || 0,
@@ -553,16 +557,28 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
               </div>
             </div>
 
-            {/* SKU */}
-            <div>
-              <Label htmlFor="sku">SKU / Barcode</Label>
-              <Input
-                id="sku"
-                className="mt-1"
-                value={form.sku}
-                onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
-                placeholder="Optional product code"
-              />
+            {/* SKU + Barcode */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="sku">SKU</Label>
+                <Input
+                  id="sku"
+                  className="mt-1 font-mono"
+                  value={form.sku}
+                  onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
+                  placeholder="Internal code"
+                />
+              </div>
+              <div>
+                <Label htmlFor="barcode">Barcode</Label>
+                <Input
+                  id="barcode"
+                  className="mt-1 font-mono"
+                  value={form.barcode}
+                  onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
+                  placeholder="EAN-13 / UPC"
+                />
+              </div>
             </div>
 
             {/* Description */}

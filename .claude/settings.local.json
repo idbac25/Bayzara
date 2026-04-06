@@ -26,7 +26,10 @@
       "Bash(npx tsc:*)",
       "Bash(xargs grep:*)",
       "Bash(grep -n \"payment_method\\\\|invoiceId\\\\|sale\\\\|submit\\\\|handlePay\" src/app/app/[slug]/pos/POSClient.tsx)",
-      "Bash(grep -n \"select\" src/app/app/[slug]/layout.tsx)"
+      "Bash(grep -n \"select\" src/app/app/[slug]/layout.tsx)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('ScanLine:', !!l.ScanLine, 'ScanBarcode:', !!l.ScanBarcode\\)\")",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }

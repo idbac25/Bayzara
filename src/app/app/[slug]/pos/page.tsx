@@ -30,7 +30,7 @@ export default async function POSPage({ params }: Props) {
   // Load active inventory items available for sale
   const { data: items } = await supabase
     .from('inventory_items')
-    .select('id, name, sku, unit, sale_price, tax_rate, stock_quantity, type, category, image_url')
+    .select('id, name, sku, barcode, unit, sale_price, tax_rate, stock_quantity, type, category, image_url')
     .eq('business_id', business.id)
     .eq('archived', false)
     .order('name')
