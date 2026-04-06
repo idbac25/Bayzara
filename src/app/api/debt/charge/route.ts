@@ -70,5 +70,12 @@ export async function POST(req: NextRequest) {
 
   if (balanceError) return NextResponse.json({ error: balanceError.message }, { status: 500 })
 
+  // Audit log
+  supabase.from('business_audit_log').insert({
+    business_id, user_id: user.id,
+    action: 'debt_charge', entity_type: 'debt_transaction',
+    details: { amount: amt, description, customer_id },
+  }).then(() => {})
+
   return NextResponse.json({ success: true, new_balance: account.current_balance + amt })
 }

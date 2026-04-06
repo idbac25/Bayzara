@@ -50,12 +50,23 @@ export default async function POSPage({ params }: Props) {
     .eq('business_id', business.id)
     .eq('is_active', true)
 
+  // Load active staff members with PIN set
+  const { data: rawStaff } = await supabase
+    .from('staff_members')
+    .select('id, name, role, pin_hash, is_active')
+    .eq('business_id', business.id)
+    .eq('is_active', true)
+    .order('name')
+
+  const staff = (rawStaff ?? []).map(s => ({ ...s, has_pin: !!s.pin_hash, pin_hash: undefined }))
+
   return (
     <POSClient
       business={business}
       items={items ?? []}
       clients={clients ?? []}
       evcConnections={evcConnections ?? []}
+      staff={staff}
     />
   )
 }

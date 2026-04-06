@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -9,12 +9,25 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { POSPaymentOverlay, type SenderInfo } from './POSPaymentOverlay'
 import { POSReceipt } from './POSReceipt'
+import { POSCashierLogin } from './POSCashierLogin'
 import {
   Search, Plus, Minus, Trash2, ShoppingCart, ArrowLeft,
-  Banknote, Zap, CreditCard, User, ChevronDown, Maximize2, Minimize2
+  Banknote, Zap, CreditCard, User, ChevronDown, Maximize2, Minimize2,
+  UserCircle, RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useFeature } from '@/contexts/BusinessContext'
+
+const CASHIER_SESSION_KEY = 'bayzara_pos_cashier'
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000 // 12 hours
+
+interface CashierSession {
+  id: string
+  name: string
+  role: string
+  business_id: string
+  at: number
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -80,16 +93,26 @@ interface CompletedSale {
   customerPhone?: string
 }
 
+interface StaffMember {
+  id: string
+  name: string
+  role: 'owner' | 'manager' | 'cashier'
+  has_pin: boolean
+}
+
 interface Props {
   business: Business
   items: POSItem[]
   clients: POSClient[]
   evcConnections: EvcConnection[]
+  staff: StaffMember[]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function POSClient({ business, items, clients, evcConnections }: Props) {
+export function POSClient({ business, items, clients, evcConnections, staff }: Props) {
+  const [cashier, setCashier] = useState<CashierSession | null>(null)
+  const [showLogin, setShowLogin] = useState(false)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
@@ -106,6 +129,42 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const hasCreditCustomers = useFeature('credit_customers')
   const hasEvcFeature = useFeature('evc_plus')
+
+  // Restore or prompt cashier session on mount
+  useEffect(() => {
+    const hasStaffWithPin = staff.some(s => s.has_pin)
+    if (!hasStaffWithPin) return // no staff set up — skip login
+
+    try {
+      const stored = localStorage.getItem(CASHIER_SESSION_KEY)
+      if (stored) {
+        const session: CashierSession = JSON.parse(stored)
+        const valid = session.business_id === business.id && (Date.now() - session.at) < SESSION_TTL_MS
+        if (valid) { setCashier(session); return }
+      }
+    } catch { /* ignore */ }
+    setShowLogin(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleLogin = (session: { id: string; name: string; role: string }) => {
+    const full: CashierSession = { ...session, business_id: business.id, at: Date.now() }
+    localStorage.setItem(CASHIER_SESSION_KEY, JSON.stringify(full))
+    setCashier(full)
+    setShowLogin(false)
+  }
+
+  const handleSkip = () => {
+    localStorage.removeItem(CASHIER_SESSION_KEY)
+    setCashier(null)
+    setShowLogin(false)
+  }
+
+  const switchCashier = () => {
+    localStorage.removeItem(CASHIER_SESSION_KEY)
+    setCashier(null)
+    setShowLogin(true)
+  }
 
   // ── Derived state ──────────────────────────────────────────────────────────
 
@@ -196,6 +255,7 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     evc_connection_id: selectedEvc?.id ?? null,
     evc_sender_name: senderName ?? null,
     evc_sender_phone: senderPhone ?? null,
+    staff_id: cashier?.id ?? null,
   })
 
   const submitSale = async (evcTranId?: string, txUuid?: string, senderName?: string | null, senderPhone?: string | null) => {
@@ -288,7 +348,18 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
           <Badge className="bg-[#F5A623] text-black text-[10px] font-bold">LIVE</Badge>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-white/50 text-sm">{business.name}</span>
+          {cashier && (
+            <button
+              onClick={switchCashier}
+              className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs transition-colors"
+              title="Switch cashier"
+            >
+              <UserCircle className="h-4 w-4" />
+              <span>{cashier.name}</span>
+              <RefreshCw className="h-3 w-3" />
+            </button>
+          )}
+          <span className="text-white/30 text-xs hidden sm:block">{business.name}</span>
           <button
             onClick={() => setIsFullscreen(f => !f)}
             className="text-white/60 hover:text-white p-1 rounded"
@@ -638,5 +709,18 @@ export function POSClient({ business, items, clients, evcConnections }: Props) {
     </div>
   )
 
-  return posContent
+  return (
+    <>
+      {showLogin && (
+        <POSCashierLogin
+          businessName={business.name}
+          businessId={business.id}
+          staff={staff}
+          onLogin={handleLogin}
+          onSkip={handleSkip}
+        />
+      )}
+      {posContent}
+    </>
+  )
 }

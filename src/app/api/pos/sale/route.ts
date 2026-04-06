@@ -23,6 +23,7 @@ interface SalePayload {
   evc_connection_id?: string | null
   evc_sender_name?: string | null
   evc_sender_phone?: string | null
+  staff_id?: string | null
 }
 
 export async function POST(req: NextRequest) {
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body: SalePayload = await req.json()
-  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_tx_uuid, evc_connection_id, evc_sender_name, evc_sender_phone } = body
+  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_tx_uuid, evc_connection_id, evc_sender_name, evc_sender_phone, staff_id } = body
 
   if (!slug || !line_items?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -151,6 +152,7 @@ export async function POST(req: NextRequest) {
       payment_method,
       evc_sender_phone: evc_sender_phone ?? null,
       evc_sender_name: evc_sender_name ?? null,
+      staff_id: staff_id ?? null,
       ...(evc_sender_phone ? { notes: `EVC: ${evc_sender_name ?? ''} ${evc_sender_phone}`.trim() } : {}),
     })
     .select()
@@ -262,6 +264,17 @@ export async function POST(req: NextRequest) {
       }
     }
   }
+
+  // Audit log — fire and forget
+  supabase.from('business_audit_log').insert({
+    business_id: business.id,
+    staff_id:    staff_id ?? null,
+    user_id:     user.id,
+    action:      'pos_sale',
+    entity_type: 'document',
+    entity_id:   doc.id,
+    details:     { total, payment_method, invoice_number: doc.document_number },
+  }).then(() => {})
 
   return NextResponse.json({
     invoice_id: doc.id,
