@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
   Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, BarChart3, Kanban, X, Monitor,
-  UserRound, BookOpen, UserCog, ClipboardCheck, Plug
+  UserRound, BookOpen, UserCog, ClipboardCheck
 } from 'lucide-react'
 
 interface NavItem {
@@ -63,7 +63,6 @@ function buildShopNav(slug: string, hasEvc: boolean): NavSection[] {
     {
       title: 'SETTINGS',
       items: [
-        { label: 'Integrations', href: `${base}/settings?tab=integrations`, icon: Plug },
         { label: 'Settings', href: `${base}/settings`, icon: Settings },
       ]
     },
