@@ -261,10 +261,13 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
         toast.success(`Added: ${match.name}`, { duration: 1500 })
       }
     } else {
-      toast(`Barcode not found: ${code}`, {
-        description: 'Go to Products → Add Product to register this barcode.',
-        duration: 4000,
-        icon: '🔍',
+      toast(`Barcode not recognised: ${code}`, {
+        description: 'Tap Add Product to register it now.',
+        duration: 6000,
+        action: {
+          label: 'Add Product',
+          onClick: () => router.push(`/app/${business.slug}/products?barcode=${encodeURIComponent(code)}`),
+        },
       })
     }
     setShowCameraScanner(false)

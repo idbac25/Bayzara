@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useBusiness } from '@/contexts/BusinessContext'
@@ -45,6 +45,7 @@ interface Props {
   businessId: string
   slug: string
   currency: string
+  prefillBarcode: string | null
 }
 
 const UNIT_OPTIONS = ['pcs', 'kg', 'g', 'l', 'ml', 'box', 'pack', 'dozen', 'pair', 'set']
@@ -81,7 +82,7 @@ const emptyForm = {
   track_stock: false,
 }
 
-export function ProductsClient({ products: initialProducts, businessId, slug, currency }: Props) {
+export function ProductsClient({ products: initialProducts, businessId, slug, currency, prefillBarcode }: Props) {
   const { business } = useBusiness()
   const router = useRouter()
   const supabase = createClient()
@@ -99,6 +100,18 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+
+  // If navigated from POS with ?barcode=..., auto-open Add Product with barcode pre-filled
+  useEffect(() => {
+    if (prefillBarcode) {
+      setEditing(null)
+      setForm({ ...emptyForm, barcode: prefillBarcode })
+      setImageFile(null)
+      setImagePreview(null)
+      setSheetOpen(true)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillBarcode])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const categories = useMemo(() => {

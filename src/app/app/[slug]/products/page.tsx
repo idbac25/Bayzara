@@ -5,10 +5,12 @@ import { ProductsClient } from './ProductsClient'
 
 interface Props {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ barcode?: string }>
 }
 
-export default async function ProductsPage({ params }: Props) {
+export default async function ProductsPage({ params, searchParams }: Props) {
   const { slug } = await params
+  const { barcode: prefillBarcode } = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,6 +41,7 @@ export default async function ProductsPage({ params }: Props) {
       businessId={business.id}
       slug={slug}
       currency={business.currency}
+      prefillBarcode={prefillBarcode ?? null}
     />
   )
 }
