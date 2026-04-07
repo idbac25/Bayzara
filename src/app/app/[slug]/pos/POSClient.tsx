@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -113,6 +114,7 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function POSClient({ business, items, clients, evcConnections, staff }: Props) {
+  const router = useRouter()
   const [cashier, setCashier] = useState<CashierSession | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [search, setSearch] = useState('')
@@ -434,6 +436,13 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
             </button>
           )}
           <span className="text-white/30 text-xs hidden sm:block">{business.name}</span>
+          <button
+            onClick={() => router.refresh()}
+            className="text-white/60 hover:text-white p-1 rounded"
+            title="Refresh product list"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
           <button
             onClick={() => setIsFullscreen(f => !f)}
             className="text-white/60 hover:text-white p-1 rounded hidden sm:block"

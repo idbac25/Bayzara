@@ -3,6 +3,9 @@ import { notFound, redirect } from 'next/navigation'
 import { hasFeature } from '@/lib/features'
 import { POSClient } from './POSClient'
 
+// Always fetch fresh product/staff data — never serve a cached version
+export const dynamic = 'force-dynamic'
+
 interface Props {
   params: Promise<{ slug: string }>
 }

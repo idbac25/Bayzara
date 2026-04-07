@@ -409,7 +409,12 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
                       {product.stock_quantity} in stock
                     </p>
                   )}
-                  {product.sku && (
+                  {product.barcode && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5 font-mono flex items-center gap-0.5">
+                      <span className="text-[9px]">▌▌</span>{product.barcode}
+                    </p>
+                  )}
+                  {product.sku && !product.barcode && (
                     <p className="text-[10px] text-muted-foreground/60 mt-0.5 font-mono">
                       {product.sku}
                     </p>
