@@ -130,6 +130,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
   const [completedSale, setCompletedSale] = useState<CompletedSale | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showCameraScanner, setShowCameraScanner] = useState(false)
+  const [mobileView, setMobileView] = useState<'products' | 'cart'>('products')
   const hasCreditCustomers = useFeature('credit_customers')
   const hasEvcFeature = useFeature('evc_plus')
 
@@ -404,10 +405,23 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
           <Badge className="bg-[#F5A623] text-black text-[10px] font-bold">LIVE</Badge>
         </div>
         <div className="flex items-center gap-3">
+          {/* Mobile cart tab toggle */}
+          <button
+            className={cn(
+              'lg:hidden flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-colors',
+              mobileView === 'cart'
+                ? 'bg-[#F5A623] text-black font-bold'
+                : 'bg-white/10 text-white/70'
+            )}
+            onClick={() => setMobileView(v => v === 'cart' ? 'products' : 'cart')}
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            {cartCount > 0 ? `Cart (${cartCount})` : 'Cart'}
+          </button>
           {cashier && (
             <button
               onClick={switchCashier}
-              className="flex items-center gap-1.5 text-white/60 hover:text-white text-xs transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-white/60 hover:text-white text-xs transition-colors"
               title="Switch cashier"
             >
               <UserCircle className="h-4 w-4" />
@@ -418,7 +432,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
           <span className="text-white/30 text-xs hidden sm:block">{business.name}</span>
           <button
             onClick={() => setIsFullscreen(f => !f)}
-            className="text-white/60 hover:text-white p-1 rounded"
+            className="text-white/60 hover:text-white p-1 rounded hidden sm:block"
             title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -428,10 +442,13 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
 
       <div className="flex flex-1 min-h-0">
         {/* ── Left: Product Grid ─────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 border-r border-gray-200">
+        <div className={cn(
+          'flex-1 flex-col min-w-0 border-r border-gray-200',
+          mobileView === 'cart' ? 'hidden lg:flex' : 'flex'
+        )}>
           {/* Search + category filter */}
-          <div className="p-3 bg-white border-b flex items-center gap-2">
-            <div className="relative flex-1">
+          <div className="p-3 bg-white border-b flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-9 pr-9 h-9 text-sm"
@@ -479,7 +496,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
           </div>
 
           {/* Product grid */}
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex-1 overflow-y-auto p-3 pb-24 lg:pb-3">
             {filteredItems.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <ShoppingCart className="h-10 w-10 mx-auto mb-2 opacity-30" />
@@ -537,13 +554,42 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
               </div>
             )}
           </div>
+
+          {/* Mobile floating cart button */}
+          {cartCount > 0 && (
+            <div className="lg:hidden fixed bottom-4 left-4 right-4 z-20">
+              <button
+                onClick={() => setMobileView('cart')}
+                className="w-full bg-[#0F4C81] text-white rounded-2xl py-4 px-5 flex items-center justify-between shadow-2xl active:scale-95 transition-transform"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#F5A623] text-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                  <span className="font-semibold">View Cart</span>
+                </div>
+                <span className="font-bold">{formatCurrency(total, business.currency)}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Right: Cart + Checkout ──────────────────────────────────── */}
-        <div className="w-80 flex flex-col bg-white flex-shrink-0">
+        <div className={cn(
+          'flex-col bg-white flex-shrink-0',
+          'w-full lg:w-80',
+          mobileView === 'products' ? 'hidden lg:flex' : 'flex'
+        )}>
           {/* Cart header */}
           <div className="px-4 py-3 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
+              {/* Mobile back button */}
+              <button
+                onClick={() => setMobileView('products')}
+                className="lg:hidden text-muted-foreground hover:text-foreground mr-1"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
               <ShoppingCart className="h-4 w-4 text-[#0F4C81]" />
               <span className="font-semibold text-sm">Cart</span>
               {cartCount > 0 && (
