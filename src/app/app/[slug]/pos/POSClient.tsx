@@ -140,6 +140,10 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
   const barcodeBuffer = useRef('')
   const barcodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Always point at the latest items — avoids stale closure in handleBarcodeDetected
+  const itemsRef = useRef(items)
+  useEffect(() => { itemsRef.current = items }, [items])
+
   // Restore or prompt cashier session on mount
   useEffect(() => {
     const hasStaffWithPin = staff.some(s => s.has_pin)
@@ -249,7 +253,8 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
   const handleBarcodeDetected = useCallback((barcode: string) => {
     const code = barcode.trim()
     if (!code) return
-    const match = items.find(i =>
+    // Use ref so this always searches the latest product list, never a stale snapshot
+    const match = itemsRef.current.find(i =>
       (i.barcode && i.barcode.trim() === code) ||
       (i.sku && i.sku.trim() === code)
     )
@@ -261,7 +266,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
         toast.success(`Added: ${match.name}`, { duration: 1500 })
       }
     } else {
-      toast(`Barcode not recognised: ${code}`, {
+      toast(`Barcode not registered: ${code}`, {
         description: 'Tap Add Product to register it now.',
         duration: 6000,
         action: {
@@ -272,7 +277,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
     }
     setShowCameraScanner(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items])
+  }, [router, business.slug])
 
   // USB HID scanner: detects rapid keystroke sequences ending with Enter
   useEffect(() => {
