@@ -259,7 +259,11 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
         toast.success(`Added: ${match.name}`, { duration: 1500 })
       }
     } else {
-      toast.error(`No product with barcode: ${code}`, { duration: 2500 })
+      toast(`Barcode not found: ${code}`, {
+        description: 'Go to Products → Add Product to register this barcode.',
+        duration: 4000,
+        icon: '🔍',
+      })
     }
     setShowCameraScanner(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps

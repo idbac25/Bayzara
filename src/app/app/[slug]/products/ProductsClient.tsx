@@ -16,8 +16,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Plus, Search, MoreHorizontal, Pencil, Trash2, Package,
-  Upload, X, ImageIcon, AlertTriangle
+  Upload, X, ImageIcon, AlertTriangle, ScanLine
 } from 'lucide-react'
+import { BarcodeScanner } from '../pos/BarcodeScanner'
 import { toast } from 'sonner'
 import { formatCurrency, cn } from '@/lib/utils'
 
@@ -97,6 +98,7 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const categories = useMemo(() => {
@@ -571,13 +573,23 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
               </div>
               <div>
                 <Label htmlFor="barcode">Barcode</Label>
-                <Input
-                  id="barcode"
-                  className="mt-1 font-mono"
-                  value={form.barcode}
-                  onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
-                  placeholder="EAN-13 / UPC"
-                />
+                <div className="relative mt-1">
+                  <Input
+                    id="barcode"
+                    className="font-mono pr-9"
+                    value={form.barcode}
+                    onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
+                    placeholder="EAN-13 / UPC"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowBarcodeScanner(true)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#0F4C81] transition-colors"
+                    title="Scan barcode with camera"
+                  >
+                    <ScanLine className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -668,6 +680,18 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
         loading={deleting}
         onConfirm={handleDelete}
       />
+
+      {/* Barcode camera scanner — fills the barcode field */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onDetected={(code) => {
+            setForm(f => ({ ...f, barcode: code }))
+            setShowBarcodeScanner(false)
+            toast.success(`Barcode scanned: ${code}`)
+          }}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
     </div>
   )
 }
