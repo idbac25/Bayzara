@@ -82,7 +82,7 @@ export function BarcodeScanner({ onDetected, onClose }: Props) {
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-[#1a2744] text-white">

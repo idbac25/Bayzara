@@ -573,23 +573,21 @@ export function ProductsClient({ products: initialProducts, businessId, slug, cu
               </div>
               <div>
                 <Label htmlFor="barcode">Barcode</Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="barcode"
-                    className="font-mono pr-9"
-                    value={form.barcode}
-                    onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
-                    placeholder="EAN-13 / UPC"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowBarcodeScanner(true)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-[#0F4C81] transition-colors"
-                    title="Scan barcode with camera"
-                  >
-                    <ScanLine className="h-4 w-4" />
-                  </button>
-                </div>
+                <Input
+                  id="barcode"
+                  className="mt-1 font-mono"
+                  value={form.barcode}
+                  onChange={e => setForm(f => ({ ...f, barcode: e.target.value }))}
+                  placeholder="EAN-13 / UPC"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowBarcodeScanner(true)}
+                  className="mt-1.5 w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#0F4C81]/40 bg-[#0F4C81]/5 hover:bg-[#0F4C81]/10 text-[#0F4C81] text-sm font-medium py-2.5 transition-colors active:scale-95"
+                >
+                  <ScanLine className="h-4 w-4" />
+                  Scan Barcode with Camera
+                </button>
               </div>
             </div>
 
