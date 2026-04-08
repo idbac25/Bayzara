@@ -18,6 +18,7 @@ interface SalePayload {
   line_items: SaleLineItem[]
   payment_method: 'cash' | 'evc' | 'credit'
   customer_id?: string | null
+  pos_customer_id_override?: string | null   // POS/shop customer selected for credit
   evc_tran_id?: string | null
   evc_tx_uuid?: string | null
   evc_connection_id?: string | null
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body: SalePayload = await req.json()
-  const { slug, line_items, payment_method, customer_id, evc_tran_id, evc_tx_uuid, evc_connection_id, evc_sender_name, evc_sender_phone, staff_id } = body
+  const { slug, line_items, payment_method, customer_id, pos_customer_id_override, evc_tran_id, evc_tx_uuid, evc_connection_id, evc_sender_name, evc_sender_phone, staff_id } = body
 
   if (!slug || !line_items?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest) {
       date: today,
       due_date: dueDate,
       client_id: resolvedCustomerId,
-      pos_customer_id: posCustomerId,
+      pos_customer_id: pos_customer_id_override ?? posCustomerId,
       status: 'sent',
       currency: business.currency,
       subtotal,
@@ -261,6 +262,35 @@ export async function POST(req: NextRequest) {
           p_item_id: item.inventory_item_id,
           p_qty: item.quantity,
         }).maybeSingle()
+      }
+    }
+
+    // Auto-record debt charge when a POS customer is selected
+    const debtCustomerId = pos_customer_id_override
+    if (debtCustomerId) {
+      // Upsert debt account
+      const { data: acct } = await supabase
+        .from('debt_accounts')
+        .upsert(
+          { business_id: business.id, customer_id: debtCustomerId, credit_limit: 0 },
+          { onConflict: 'business_id,customer_id', ignoreDuplicates: false }
+        )
+        .select('id, current_balance')
+        .single()
+
+      if (acct) {
+        await supabase.from('debt_transactions').insert({
+          business_id: business.id,
+          debt_account_id: acct.id,
+          customer_id: debtCustomerId,
+          type: 'credit',
+          amount: total,
+          description: `POS sale #${doc.document_number}`,
+          created_by: user.id,
+        })
+        await supabase.from('debt_accounts')
+          .update({ current_balance: acct.current_balance + total, updated_at: new Date().toISOString() })
+          .eq('id', acct.id)
       }
     }
   }

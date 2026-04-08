@@ -38,12 +38,11 @@ export default async function POSPage({ params }: Props) {
     .eq('archived', false)
     .order('name')
 
-  // Load active clients for customer search
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, name, phone, evc_phone, payment_terms, credit_limit, credit_terms_days')
+  // Load retail (POS) customers for credit sales
+  const { data: posCustomers } = await supabase
+    .from('pos_customers')
+    .select('id, name, primary_phone')
     .eq('business_id', business.id)
-    .eq('archived', false)
     .order('name')
 
   // Load active EVC connections
@@ -67,7 +66,7 @@ export default async function POSPage({ params }: Props) {
     <POSClient
       business={business}
       items={items ?? []}
-      clients={clients ?? []}
+      posCustomers={posCustomers ?? []}
       evcConnections={evcConnections ?? []}
       staff={staff}
     />

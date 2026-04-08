@@ -47,14 +47,10 @@ interface POSItem {
   image_url: string | null
 }
 
-interface POSClient {
+interface POSCustomer {
   id: string
   name: string
-  phone: string | null
-  evc_phone: string | null
-  payment_terms: string
-  credit_limit: number
-  credit_terms_days: number
+  primary_phone: string
 }
 
 interface EvcConnection {
@@ -106,23 +102,27 @@ interface StaffMember {
 interface Props {
   business: Business
   items: POSItem[]
-  clients: POSClient[]
+  posCustomers: POSCustomer[]
   evcConnections: EvcConnection[]
   staff: StaffMember[]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function POSClient({ business, items, clients, evcConnections, staff }: Props) {
+export function POSClient({ business, items, posCustomers, evcConnections, staff }: Props) {
   const router = useRouter()
   const [cashier, setCashier] = useState<CashierSession | null>(null)
   const [showLogin, setShowLogin] = useState(false)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
-  const [customer, setCustomer] = useState<POSClient | null>(null)
+  const [customer, setCustomer] = useState<POSCustomer | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
+  const [addingCustomer, setAddingCustomer] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerPhone, setNewCustomerPhone] = useState('')
+  const [savingCustomer, setSavingCustomer] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'evc' | 'credit'>('cash')
   const [selectedEvc, setSelectedEvc] = useState<EvcConnection | null>(evcConnections[0] ?? null)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -196,15 +196,14 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
     })
   }, [items, search, categoryFilter])
 
-  const filteredClients = useMemo(() => {
-    if (!customerSearch) return clients.slice(0, 8)
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch) return posCustomers.slice(0, 10)
     const q = customerSearch.toLowerCase()
-    return clients.filter(c =>
+    return posCustomers.filter(c =>
       c.name.toLowerCase().includes(q) ||
-      c.phone?.includes(q) ||
-      c.evc_phone?.includes(q)
-    ).slice(0, 8)
-  }, [clients, customerSearch])
+      c.primary_phone.includes(q)
+    ).slice(0, 10)
+  }, [posCustomers, customerSearch])
 
   const subtotal = cart.reduce((s, ci) => s + ci.item.sale_price * ci.quantity, 0)
   const taxAmount = cart.reduce((s, ci) => {
@@ -247,6 +246,35 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
     setPaymentMethod('cash')
     setPendingEvcTranId(null)
     setEvcInitiatedAt(null)
+  }
+
+  // ── Inline add customer ───────────────────────────────────────────────────
+  const handleAddCustomer = async () => {
+    if (!newCustomerName.trim() || !newCustomerPhone.trim()) return
+    setSavingCustomer(true)
+    try {
+      const res = await fetch('/api/pos/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_id: business.id,
+          name: newCustomerName.trim(),
+          primary_phone: newCustomerPhone.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { toast.error(data.error ?? 'Failed to add customer'); return }
+      const newC: POSCustomer = { id: data.id, name: data.name, primary_phone: data.primary_phone }
+      setCustomer(newC)
+      setAddingCustomer(false)
+      setNewCustomerName('')
+      setNewCustomerPhone('')
+      setShowCustomerSearch(false)
+      setPaymentMethod('credit')
+      toast.success(`${newC.name} added`)
+    } finally {
+      setSavingCustomer(false)
+    }
   }
 
   // ── Barcode scanner (USB HID + camera) ────────────────────────────────────
@@ -320,7 +348,8 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
       inventory_item_id: ci.item.id,
     })),
     payment_method: paymentMethod,
-    customer_id: customer?.id ?? null,
+    customer_id: null,
+    pos_customer_id_override: customer?.id ?? null,
     evc_tran_id: evcTranId ?? null,
     evc_tx_uuid: txUuid ?? null,
     evc_connection_id: selectedEvc?.id ?? null,
@@ -360,7 +389,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
         paymentMethod,
         currency: business.currency,
         customerName: senderName ?? customer?.name,
-        customerPhone: senderPhone ?? customer?.phone ?? undefined,
+        customerPhone: senderPhone ?? customer?.primary_phone ?? undefined,
       })
 
       clearCart()
@@ -696,7 +725,7 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
             {/* Customer selector */}
             <div>
               <button
-                onClick={() => setShowCustomerSearch(!showCustomerSearch)}
+                onClick={() => { setShowCustomerSearch(!showCustomerSearch); setAddingCustomer(false) }}
                 className={cn(
                   'w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors',
                   customer ? 'border-[#0F4C81]/30 bg-[#0F4C81]/5' : 'border-dashed hover:border-[#0F4C81]/30'
@@ -707,49 +736,99 @@ export function POSClient({ business, items, clients, evcConnections, staff }: P
                   {customer ? customer.name : 'Add customer (optional)'}
                 </span>
                 {customer && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setCustomer(null); setCustomerSearch('') }}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    ×
-                  </button>
+                  <>
+                    <span className="text-xs text-muted-foreground truncate">{customer.primary_phone}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCustomer(null); setCustomerSearch('') }}
+                      className="text-muted-foreground hover:text-foreground ml-1"
+                    >×</button>
+                  </>
                 )}
                 {!customer && <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
 
               {showCustomerSearch && (
                 <div className="mt-1 border rounded-lg bg-white shadow-lg z-10 relative">
-                  <div className="p-2">
-                    <Input
-                      autoFocus
-                      placeholder="Search customers..."
-                      value={customerSearch}
-                      onChange={e => setCustomerSearch(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="max-h-40 overflow-y-auto">
-                    {filteredClients.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => { setCustomer(c); setShowCustomerSearch(false); if (c.payment_terms === 'credit') setPaymentMethod('credit') }}
-                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/40 text-left text-sm"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{c.name}</p>
-                          {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
-                        </div>
-                        {c.payment_terms === 'credit' && (
-                          <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
-                            Credit
-                          </Badge>
+                  {!addingCustomer ? (
+                    <>
+                      <div className="p-2">
+                        <Input
+                          autoFocus
+                          placeholder="Search by name or phone..."
+                          value={customerSearch}
+                          onChange={e => setCustomerSearch(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredCustomers.map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => {
+                              setCustomer(c)
+                              setShowCustomerSearch(false)
+                              setCustomerSearch('')
+                              setPaymentMethod('credit')
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40 text-left text-sm"
+                          >
+                            <div className="w-7 h-7 rounded-full bg-[#0F4C81]/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[11px] font-bold text-[#0F4C81]">{c.name[0].toUpperCase()}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{c.name}</p>
+                              <p className="text-xs text-muted-foreground">{c.primary_phone}</p>
+                            </div>
+                          </button>
+                        ))}
+                        {filteredCustomers.length === 0 && (
+                          <p className="px-3 py-2 text-xs text-muted-foreground">No match — add as new customer below</p>
                         )}
-                      </button>
-                    ))}
-                    {filteredClients.length === 0 && (
-                      <p className="px-3 py-2 text-sm text-muted-foreground">No customers found</p>
-                    )}
-                  </div>
+                      </div>
+                      <div className="p-2 border-t">
+                        <button
+                          onClick={() => {
+                            setAddingCustomer(true)
+                            setNewCustomerName(customerSearch)
+                            setNewCustomerPhone('')
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 text-xs text-[#0F4C81] font-medium py-1.5 hover:bg-[#0F4C81]/5 rounded"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add new customer
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-3 space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">New Customer</p>
+                      <Input
+                        autoFocus
+                        placeholder="Full name"
+                        value={newCustomerName}
+                        onChange={e => setNewCustomerName(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      <Input
+                        placeholder="Phone number"
+                        value={newCustomerPhone}
+                        onChange={e => setNewCustomerPhone(e.target.value)}
+                        className="h-8 text-sm"
+                        type="tel"
+                      />
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => setAddingCustomer(false)}
+                          className="flex-1 text-xs text-muted-foreground py-1.5 border rounded hover:bg-muted/40"
+                        >Cancel</button>
+                        <button
+                          onClick={handleAddCustomer}
+                          disabled={savingCustomer || !newCustomerName.trim() || !newCustomerPhone.trim()}
+                          className="flex-1 text-xs bg-[#0F4C81] text-white py-1.5 rounded font-medium disabled:opacity-50"
+                        >{savingCustomer ? 'Saving…' : 'Add & Select'}</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
