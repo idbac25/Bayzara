@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Zap, Loader2, CheckCircle, Shield } from 'lucide-react'
+import { Zap, Loader2, CheckCircle, Shield, MessageSquare } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 interface AccountInfo {
@@ -31,11 +31,15 @@ export default function ConnectEVCPage() {
   const params = useParams()
   const slug = params.slug as string
 
-  const [step, setStep] = useState<'credentials' | 'confirm'>('credentials')
+  const [step, setStep] = useState<'credentials' | 'otp' | 'confirm'>('credentials')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpMessage, setOtpMessage] = useState('')
+  const [pendingSessionId, setPendingSessionId] = useState('')
+  const [pendingSessionCookie, setPendingSessionCookie] = useState('')
 
   const handleConnect = async () => {
     setLoading(true)
@@ -58,10 +62,53 @@ export default function ConnectEVCPage() {
         return
       }
 
+      // OTP required — Hormud sent an SMS code to the merchant's phone
+      if (data.otp_required) {
+        setPendingSessionId(data.pending_session_id ?? '')
+        setPendingSessionCookie(data.pending_session_cookie ?? '')
+        setOtpMessage(data.message ?? 'Enter the OTP sent to your phone')
+        setOtpCode('')
+        setStep('otp')
+        setLoading(false)
+        return
+      }
+
       setAccountInfo(data)
       setStep('confirm')
     } catch {
       toast.error('Failed to connect. Check your credentials.')
+    }
+    setLoading(false)
+  }
+
+  const handleOtpSubmit = async () => {
+    if (!otpCode.trim()) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/evc/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          business_id: business.id,
+          otp_code: otpCode.trim(),
+          pending_session_id: pendingSessionId,
+          pending_session_cookie: pendingSessionCookie,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error ?? 'OTP verification failed')
+        setLoading(false)
+        return
+      }
+
+      setAccountInfo(data)
+      setStep('confirm')
+    } catch {
+      toast.error('OTP verification failed. Try again.')
     }
     setLoading(false)
   }
@@ -105,7 +152,65 @@ export default function ConnectEVCPage() {
         ]}
       />
 
-      {step === 'credentials' ? (
+      {step === 'otp' ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                <MessageSquare className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <CardTitle>Verify with OTP</CardTitle>
+                <CardDescription>Hormud sent a code to your registered phone</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+              {otpMessage || 'Enter the OTP sent to your phone'}
+            </div>
+
+            <div className="space-y-2">
+              <Label>OTP Code</Label>
+              <Input
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="e.g. 614255"
+                type="text"
+                inputMode="numeric"
+                maxLength={8}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter' && otpCode.trim()) handleOtpSubmit() }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Logged in as <span className="font-medium">{username}</span>
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setStep('credentials'); setOtpCode('') }}
+                disabled={loading}
+              >
+                Back
+              </Button>
+              <Button
+                className="flex-1 bg-[#F5A623] hover:bg-[#e09520] text-black font-semibold"
+                onClick={handleOtpSubmit}
+                disabled={loading || !otpCode.trim()}
+              >
+                {loading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</>
+                ) : (
+                  <><CheckCircle className="mr-2 h-4 w-4" />Verify OTP</>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : step === 'credentials' ? (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3 mb-2">
@@ -193,8 +298,8 @@ export default function ConnectEVCPage() {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setStep('credentials')}>
-                Back
+              <Button variant="outline" className="flex-1" onClick={() => setStep('credentials')} disabled={loading}>
+                Start Over
               </Button>
               <Button
                 className="flex-1 bg-[#27AE60] hover:bg-[#229954] text-white font-semibold"
