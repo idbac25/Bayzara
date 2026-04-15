@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Search, Users, Phone, TrendingUp, Clock } from 'lucide-react'
+import { useT } from '@/contexts/LanguageContext'
 
 interface Customer {
   id: string
@@ -41,6 +42,7 @@ function timeAgo(iso: string): string {
 }
 
 export function CustomersClient({ business, customers }: Props) {
+  const t = useT()
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
@@ -60,9 +62,9 @@ export function CustomersClient({ business, customers }: Props) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t.customers.title}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Retail customer profiles built automatically from EVC payments
+          {t.customers.subtitle}
         </p>
       </div>
 
@@ -71,14 +73,14 @@ export function CustomersClient({ business, customers }: Props) {
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Users className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wide">Total Customers</span>
+            <span className="text-xs font-medium uppercase tracking-wide">{t.customers.totalCustomers}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">{customers.length}</p>
         </div>
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <TrendingUp className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wide">Total Revenue</span>
+            <span className="text-xs font-medium uppercase tracking-wide">{t.customers.totalRevenue}</span>
           </div>
           <p className="text-2xl font-bold text-[#0F4C81]">
             {formatCurrency(totalRevenue, business.currency)}
@@ -87,7 +89,7 @@ export function CustomersClient({ business, customers }: Props) {
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
             <Clock className="h-4 w-4" />
-            <span className="text-xs font-medium uppercase tracking-wide">Avg per Visit</span>
+            <span className="text-xs font-medium uppercase tracking-wide">{t.customers.avgPerVisit}</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">
             {formatCurrency(avgSpend, business.currency)}
@@ -100,7 +102,7 @@ export function CustomersClient({ business, customers }: Props) {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or phone..."
+            placeholder={t.customers.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9"
@@ -114,8 +116,8 @@ export function CustomersClient({ business, customers }: Props) {
           <Users className="h-10 w-10 mx-auto mb-2 opacity-20" />
           <p className="text-sm">
             {customers.length === 0
-              ? 'Customers will appear here automatically after the first EVC payment is matched'
-              : 'No customers match your search'
+              ? t.customers.noCustomers
+              : t.customers.noMatch
             }
           </p>
         </div>
@@ -124,12 +126,12 @@ export function CustomersClient({ business, customers }: Props) {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Visits</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total Spent</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Avg/Visit</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Last Seen</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.customers.title}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.common.phone}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.customers.visits}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.customers.totalSpent}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.customers.avgVisit}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t.customers.lastSeen}</th>
               </tr>
             </thead>
             <tbody className="divide-y">

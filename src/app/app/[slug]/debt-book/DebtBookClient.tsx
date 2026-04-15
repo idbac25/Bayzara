@@ -17,6 +17,7 @@ import {
   BookOpen, Users, DollarSign, Plus, Search,
   ChevronRight, Loader2, AlertCircle
 } from 'lucide-react'
+import { useT } from '@/contexts/LanguageContext'
 
 interface DebtAccount {
   id: string
@@ -41,6 +42,7 @@ interface Props {
 type DialogMode = 'charge' | 'pay' | null
 
 export function DebtBookClient({ business, accounts, totalOutstanding, customersInDebt, slug }: Props) {
+  const t = useT()
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
@@ -97,16 +99,16 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
   return (
     <div>
       <PageHeader
-        title="Debt Book"
-        description="Track customer credit and payments"
+        title={t.debtBook.title}
+        description={t.debtBook.subtitle}
         breadcrumbs={[
           { label: business.name, href: `/app/${slug}` },
-          { label: 'Debt Book' },
+          { label: t.debtBook.title },
         ]}
         action={
           <Link href={`/app/${slug}/customers`}>
             <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-1.5" />Add Customer
+              <Plus className="h-4 w-4 mr-1.5" />{t.debtBook.addCustomer}
             </Button>
           </Link>
         }
@@ -120,7 +122,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
               <DollarSign className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Outstanding</p>
+              <p className="text-xs text-muted-foreground">{t.debtBook.totalOutstanding}</p>
               <p className="text-xl font-bold text-red-600">{formatCurrency(totalOutstanding, business.currency)}</p>
             </div>
           </CardContent>
@@ -131,7 +133,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
               <Users className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Customers in Debt</p>
+              <p className="text-xs text-muted-foreground">{t.debtBook.customersInDebt}</p>
               <p className="text-xl font-bold text-amber-600">{customersInDebt}</p>
             </div>
           </CardContent>
@@ -142,7 +144,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
               <BookOpen className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Accounts</p>
+              <p className="text-xs text-muted-foreground">{t.debtBook.totalAccounts}</p>
               <p className="text-xl font-bold text-blue-600">{accounts.length}</p>
             </div>
           </CardContent>
@@ -164,10 +166,10 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No debt accounts yet</p>
-          <p className="text-sm mt-1">Customers will appear here once you record a credit sale.</p>
+          <p className="font-medium">{t.debtBook.noDebtYet}</p>
+          <p className="text-sm mt-1">{t.debtBook.noDebtDesc}</p>
           <Link href={`/app/${slug}/customers`}>
-            <Button className="mt-4" size="sm">Add a Customer</Button>
+            <Button className="mt-4" size="sm">{t.debtBook.addCustomer}</Button>
           </Link>
         </div>
       ) : (
@@ -196,7 +198,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
                 {/* Balance */}
                 <div className="text-right flex-shrink-0">
                   <p className={`font-bold text-sm ${account.current_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                    {account.current_balance > 0 ? formatCurrency(account.current_balance, business.currency) : 'Settled'}
+                    {account.current_balance > 0 ? formatCurrency(account.current_balance, business.currency) : t.common.settled}
                   </p>
                   {account.credit_limit > 0 && (
                     <p className="text-[11px] text-muted-foreground">
@@ -204,7 +206,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
                     </p>
                   )}
                   {overLimit && (
-                    <Badge variant="destructive" className="text-[10px] h-4 mt-0.5">Over limit</Badge>
+                    <Badge variant="destructive" className="text-[10px] h-4 mt-0.5">{t.debtBook.overLimit}</Badge>
                   )}
                 </div>
 
@@ -216,7 +218,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
                     className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
                     onClick={() => openDialog('charge', account)}
                   >
-                    + Credit
+                    {t.debtBook.charge}
                   </Button>
                   {account.current_balance > 0 && (
                     <Button
@@ -225,7 +227,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
                       className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
                       onClick={() => openDialog('pay', account)}
                     >
-                      Pay
+                      {t.debtBook.pay}
                     </Button>
                   )}
                   <Link href={`/app/${slug}/debt-book/${customer?.id}`}>
@@ -245,7 +247,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              {dialogMode === 'charge' ? 'Record Credit Sale' : 'Record Payment'}
+              {dialogMode === 'charge' ? t.debtBook.recordCredit : t.debtBook.recordPayment}
             </DialogTitle>
           </DialogHeader>
           {selectedAccount && (
@@ -255,7 +257,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
                 <p className="font-medium">{selectedAccount.pos_customers?.name}</p>
                 <p className="text-muted-foreground text-xs">{selectedAccount.pos_customers?.primary_phone}</p>
                 <p className="mt-1">
-                  Current balance:{' '}
+                  {t.debtBook.currentBalance}{' '}
                   <span className={`font-semibold ${selectedAccount.current_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {formatCurrency(selectedAccount.current_balance, business.currency)}
                   </span>
@@ -267,7 +269,7 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
                   className="text-xs text-[#0F4C81] hover:underline"
                   onClick={() => setAmount(String(selectedAccount.current_balance))}
                 >
-                  Pay full amount ({formatCurrency(selectedAccount.current_balance, business.currency)})
+                  {t.debtBook.payFullAmount} ({formatCurrency(selectedAccount.current_balance, business.currency)})
                 </button>
               )}
 
@@ -302,15 +304,15 @@ export function DebtBookClient({ business, accounts, totalOutstanding, customers
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeDialog}>{t.common.cancel}</Button>
             <Button
               onClick={handleSubmit}
               disabled={!amount || isPending}
               className={dialogMode === 'charge' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
             >
               {isPending
-                ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Saving…</>
-                : dialogMode === 'charge' ? 'Record Credit' : 'Record Payment'
+                ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t.common.saving}</>
+                : dialogMode === 'charge' ? t.debtBook.recordCredit : t.debtBook.recordPayment
               }
             </Button>
           </DialogFooter>

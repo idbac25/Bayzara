@@ -21,6 +21,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Package, Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils'
+import { useT } from '@/contexts/LanguageContext'
 
 interface InventoryItem {
   id: string
@@ -60,6 +61,7 @@ const emptyForm = {
 
 export function InventoryClient({ items: initial, businessId, currency, slug }: InventoryClientProps) {
   const { business } = useBusiness()
+  const t = useT()
   const [items, setItems] = useState(initial)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryItem | null>(null)
@@ -230,11 +232,11 @@ export function InventoryClient({ items: initial, businessId, currency, slug }: 
   return (
     <div>
       <PageHeader
-        title="Inventory"
-        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Inventory' }]}
+        title={t.inventory.title}
+        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: t.inventory.title }]}
         action={
           <Button onClick={openNew} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
-            <Plus className="mr-2 h-4 w-4" />Add Item
+            <Plus className="mr-2 h-4 w-4" />{t.inventory.addItem}
           </Button>
         }
       />
@@ -242,9 +244,9 @@ export function InventoryClient({ items: initial, businessId, currency, slug }: 
       {active.length === 0 ? (
         <EmptyState
           icon={Package}
-          title="No inventory items yet"
-          description="Add products and services to use on invoices and quotes."
-          actionLabel="Add Item"
+          title={t.inventory.noItemsYet}
+          description={t.inventory.noItemsDesc}
+          actionLabel={t.inventory.addItem}
           onAction={openNew}
         />
       ) : (
@@ -258,16 +260,16 @@ export function InventoryClient({ items: initial, businessId, currency, slug }: 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{editing ? 'Edit Item' : 'Add Item'}</SheetTitle>
+            <SheetTitle>{editing ? t.inventory.editItem : t.inventory.addItem}</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <Label>Name *</Label>
-                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Product or service name" className="mt-1" />
+                <Label>{t.inventory.itemName}</Label>
+                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t.inventory.itemNamePlaceholder} className="mt-1" />
               </div>
               <div>
-                <Label>SKU / Code</Label>
+                <Label>{t.inventory.skuCode}</Label>
                 <Input value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} placeholder="SKU-001" className="mt-1" />
               </div>
               <div>
@@ -275,8 +277,8 @@ export function InventoryClient({ items: initial, businessId, currency, slug }: 
                 <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="product">Product</SelectItem>
-                    <SelectItem value="service">Service</SelectItem>
+                    <SelectItem value="product">{t.inventory.product}</SelectItem>
+                    <SelectItem value="service">{t.inventory.service}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -310,7 +312,7 @@ export function InventoryClient({ items: initial, businessId, currency, slug }: 
               </div>
             </div>
             <Button onClick={handleSave} disabled={saving} className="w-full bg-[#0F4C81] hover:bg-[#0d3f6e]">
-              {saving ? 'Saving...' : editing ? 'Update Item' : 'Add Item'}
+              {saving ? t.common.saving : editing ? `${t.common.update} ${t.inventory.item}` : t.inventory.addItem}
             </Button>
           </div>
         </SheetContent>
@@ -320,8 +322,8 @@ export function InventoryClient({ items: initial, businessId, currency, slug }: 
         open={!!deleteDialog}
         onOpenChange={o => !o && setDeleteDialog(null)}
         title={`Archive ${deleteDialog?.name}?`}
-        description="This item will be hidden but usage history is preserved."
-        confirmLabel="Archive"
+        description={t.inventory.archiveConfirm}
+        confirmLabel={t.common.archive}
         loading={deleting}
         onConfirm={() => deleteDialog && handleArchive(deleteDialog)}
       />

@@ -12,6 +12,7 @@ import {
   TrendingUp, AlertCircle, CheckCircle, Clock,
   ArrowUpRight
 } from 'lucide-react'
+import { useT } from '@/contexts/LanguageContext'
 
 type StatBlock = {
   totalInvoiced: number
@@ -66,6 +67,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function DashboardClient({ user, business, stats, allTimeStats, invoiceData, recentInvoices, evcConnections, recentEvc, slug }: DashboardClientProps) {
+  const t = useT()
   const currency = business?.currency ?? 'USD'
   const userName = user?.user_metadata?.full_name?.split(' ')[0] ?? 'there'
   const [period, setPeriod] = useState<'month' | 'alltime' | 'custom'>('month')
@@ -92,8 +94,8 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
     <div className="space-y-6">
       {/* Welcome */}
       <div>
-        <h1 className="text-2xl font-bold">Welcome back, {userName}!</h1>
-        <p className="text-muted-foreground text-sm mt-1">Here&apos;s what&apos;s happening with {business?.name}.</p>
+        <h1 className="text-2xl font-bold">{t.dashboard.welcomeBack}, {userName}!</h1>
+        <p className="text-muted-foreground text-sm mt-1">{t.dashboard.whatsHappening} {business?.name}.</p>
       </div>
 
       {/* EVC Balance — if connected */}
@@ -127,15 +129,15 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
       {isNew && (
         <Card className="border-dashed border-2 border-[#0F4C81]/20">
           <CardHeader>
-            <CardTitle className="text-base">Get started with Bayzara</CardTitle>
+            <CardTitle className="text-base">{t.dashboard.getStarted}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: 'Create Invoice', href: `invoices/new`, icon: FileText, color: '#0F4C81' },
-                { label: 'Add Client', href: `clients/new`, icon: Users, color: '#27AE60' },
-                { label: 'Connect EVC', href: `evc/connect`, icon: Zap, color: '#F5A623' },
-                { label: 'View Reports', href: `reports`, icon: BarChart3, color: '#8B5CF6' },
+                { label: t.dashboard.createInvoice, href: `invoices/new`, icon: FileText, color: '#0F4C81' },
+                { label: t.dashboard.addClient, href: `clients/new`, icon: Users, color: '#27AE60' },
+                { label: t.dashboard.connectEvc, href: `evc/connect`, icon: Zap, color: '#F5A623' },
+                { label: t.dashboard.viewReports, href: `reports`, icon: BarChart3, color: '#8B5CF6' },
               ].map(item => (
                 <Link
                   key={item.href}
@@ -156,7 +158,7 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
       {/* Stats */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Overview</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t.dashboard.overview}</h2>
           <div className="flex flex-wrap items-center gap-2">
             {period === 'custom' && (
               <div className="flex items-center gap-1.5">
@@ -181,19 +183,19 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
                 onClick={() => setPeriod('month')}
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${period === 'month' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                This Month
+                {t.dashboard.thisMonth}
               </button>
               <button
                 onClick={() => setPeriod('alltime')}
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${period === 'alltime' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                All Time
+                {t.dashboard.allTime}
               </button>
               <button
                 onClick={() => setPeriod('custom')}
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${period === 'custom' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                Custom
+                {t.dashboard.custom}
               </button>
             </div>
           </div>
@@ -202,7 +204,7 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoiced</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.dashboard.invoiced}</p>
                 <TrendingUp className="h-4 w-4 text-[#0F4C81]" />
               </div>
               <p className="text-xl font-bold mt-2">{formatCurrency(activeStats.totalInvoiced, currency)}</p>
@@ -215,31 +217,31 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Received</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.dashboard.received}</p>
                 <CheckCircle className="h-4 w-4 text-[#27AE60]" />
               </div>
               <p className="text-xl font-bold mt-2 text-[#27AE60]">{formatCurrency(activeStats.totalPaid, currency)}</p>
-              <p className="text-xs text-muted-foreground mt-1">Collected</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.dashboard.collected}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.dashboard.outstanding}</p>
                 <Clock className="h-4 w-4 text-[#F39C12]" />
               </div>
               <p className="text-xl font-bold mt-2 text-[#F39C12]">{formatCurrency(activeStats.totalOutstanding, currency)}</p>
-              <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.dashboard.awaitingPayment}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overdue</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t.common.overdue}</p>
                 <AlertCircle className="h-4 w-4 text-[#E74C3C]" />
               </div>
               <p className="text-xl font-bold mt-2 text-[#E74C3C]">{formatCurrency(activeStats.totalOverdue, currency)}</p>
-              <p className="text-xs text-muted-foreground mt-1">Past due date</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.dashboard.pastDueDate}</p>
             </CardContent>
           </Card>
         </div>
@@ -252,10 +254,10 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Recent Invoices</CardTitle>
+                <CardTitle className="text-base">{t.dashboard.recentInvoices}</CardTitle>
                 <Button asChild variant="ghost" size="sm" className="text-[#0F4C81]">
                   <Link href={`/app/${slug}/invoices`}>
-                    View all <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                    {t.common.viewAll} <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
                   </Link>
                 </Button>
               </div>
@@ -264,9 +266,9 @@ export function DashboardClient({ user, business, stats, allTimeStats, invoiceDa
               {recentInvoices.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No invoices yet</p>
+                  <p className="text-sm">{t.dashboard.noInvoicesYet}</p>
                   <Button asChild size="sm" className="mt-3 bg-[#0F4C81] hover:bg-[#0d3f6e]">
-                    <Link href={`/app/${slug}/invoices/new`}>Create Invoice</Link>
+                    <Link href={`/app/${slug}/invoices/new`}>{t.dashboard.createInvoice}</Link>
                   </Button>
                 </div>
               ) : (

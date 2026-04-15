@@ -15,8 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { toast } from 'sonner'
-import { Save, Building2, User, Users, FileText, Shield, Lock } from 'lucide-react'
+import { Save, Building2, User, Users, FileText, Shield, Lock, Globe } from 'lucide-react'
 import { useRole } from '@/contexts/BusinessContext'
+import { useLanguage, useT } from '@/contexts/LanguageContext'
 
 interface Business {
   id: string
@@ -83,6 +84,8 @@ const ROLE_LABELS: Record<string, string> = {
 export function SettingsClient({ business: biz, profile, teamMembers, sequences, slug, userId }: Props) {
   const { business } = useBusiness()
   const { canManageSettings } = useRole()
+  const { language, setLanguage } = useLanguage()
+  const t = useT()
   const router = useRouter()
 
   // Business form
@@ -157,16 +160,17 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
   return (
     <div>
       <PageHeader
-        title="Settings"
-        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Settings' }]}
+        title={t.settings.title}
+        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: t.settings.title }]}
       />
 
       <Tabs defaultValue="business">
         <TabsList className="mb-6">
-          <TabsTrigger value="business"><Building2 className="mr-2 h-4 w-4" />Business</TabsTrigger>
-          <TabsTrigger value="profile"><User className="mr-2 h-4 w-4" />Profile</TabsTrigger>
-          <TabsTrigger value="team"><Users className="mr-2 h-4 w-4" />Team</TabsTrigger>
-          <TabsTrigger value="documents"><FileText className="mr-2 h-4 w-4" />Documents</TabsTrigger>
+          <TabsTrigger value="business"><Building2 className="mr-2 h-4 w-4" />{t.settings.business}</TabsTrigger>
+          <TabsTrigger value="profile"><User className="mr-2 h-4 w-4" />{t.settings.profile}</TabsTrigger>
+          <TabsTrigger value="team"><Users className="mr-2 h-4 w-4" />{t.settings.team}</TabsTrigger>
+          <TabsTrigger value="documents"><FileText className="mr-2 h-4 w-4" />{t.settings.documents}</TabsTrigger>
+          <TabsTrigger value="language"><Globe className="mr-2 h-4 w-4" />{t.settings.language}</TabsTrigger>
         </TabsList>
 
         {/* Business Settings */}
@@ -174,12 +178,12 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
           <div className="space-y-6 max-w-2xl">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Business Information</CardTitle>
+                <CardTitle className="text-base">{t.settings.businessInfo}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <Label>Business Name</Label>
+                    <Label>{t.settings.businessName}</Label>
                     <Input value={bizForm.name} onChange={e => setBizForm(f => ({ ...f, name: e.target.value }))} className="mt-1" />
                   </div>
                   <div>
@@ -208,12 +212,12 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Financial Settings</CardTitle>
+                <CardTitle className="text-base">{t.settings.financialSettings}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Currency</Label>
+                    <Label>{t.settings.currency}</Label>
                     <Select value={bizForm.currency} onValueChange={v => setBizForm(f => ({ ...f, currency: v }))}>
                       <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -222,7 +226,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
                     </Select>
                   </div>
                   <div>
-                    <Label>Timezone</Label>
+                    <Label>{t.settings.timezone}</Label>
                     <Select value={bizForm.timezone} onValueChange={v => setBizForm(f => ({ ...f, timezone: v }))}>
                       <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -231,7 +235,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
                     </Select>
                   </div>
                   <div>
-                    <Label>Default Tax Rate (%)</Label>
+                    <Label>{t.settings.defaultTaxRate}</Label>
                     <Input type="number" value={bizForm.default_tax_rate} onChange={e => setBizForm(f => ({ ...f, default_tax_rate: e.target.value }))} className="mt-1" min={0} max={100} />
                   </div>
                 </div>
@@ -239,18 +243,18 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
                 <Separator />
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Bank Details (shown on invoices)</p>
+                  <p className="text-sm font-medium">{t.settings.bankDetails}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label>Bank Name</Label>
+                      <Label>{t.settings.bankName}</Label>
                       <Input value={bizForm.bank_name} onChange={e => setBizForm(f => ({ ...f, bank_name: e.target.value }))} className="mt-1" />
                     </div>
                     <div>
-                      <Label>Account Name</Label>
+                      <Label>{t.settings.accountName}</Label>
                       <Input value={bizForm.bank_account_name} onChange={e => setBizForm(f => ({ ...f, bank_account_name: e.target.value }))} className="mt-1" />
                     </div>
                     <div className="col-span-2">
-                      <Label>Account Number</Label>
+                      <Label>{t.settings.accountNumber}</Label>
                       <Input value={bizForm.bank_account_number} onChange={e => setBizForm(f => ({ ...f, bank_account_number: e.target.value }))} className="mt-1" />
                     </div>
                   </div>
@@ -259,7 +263,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
                 <Separator />
 
                 <div>
-                  <Label>Default Invoice Terms</Label>
+                  <Label>{t.settings.defaultTerms}</Label>
                   <Input value={bizForm.default_terms} onChange={e => setBizForm(f => ({ ...f, default_terms: e.target.value }))} placeholder="Payment due within 30 days" className="mt-1" />
                 </div>
               </CardContent>
@@ -268,12 +272,12 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
             {canManageSettings ? (
               <Button onClick={handleSaveBusiness} disabled={savingBiz} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
                 <Save className="mr-2 h-4 w-4" />
-                {savingBiz ? 'Saving...' : 'Save Business Settings'}
+                {savingBiz ? t.common.saving : t.settings.saveBusinessSettings}
               </Button>
             ) : (
               <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
                 <Lock className="h-4 w-4" />
-                Only admins can change business settings.
+                {t.settings.adminOnlySettings}
               </div>
             )}
           </div>
@@ -284,7 +288,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
           <div className="space-y-6 max-w-lg">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Your Profile</CardTitle>
+                <CardTitle className="text-base">{t.settings.yourProfile}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
@@ -296,7 +300,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
                   </Avatar>
                   <div>
                     <p className="font-medium">{profile?.email}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Email cannot be changed here</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.settings.emailNoChange}</p>
                   </div>
                 </div>
                 <Separator />
@@ -310,7 +314,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
                 </div>
                 <Button onClick={handleSaveProfile} disabled={savingProfile} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
                   <Save className="mr-2 h-4 w-4" />
-                  {savingProfile ? 'Saving...' : 'Save Profile'}
+                  {savingProfile ? t.common.saving : t.settings.saveProfile}
                 </Button>
               </CardContent>
             </Card>
@@ -323,7 +327,7 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Shield className="h-4 w-4" />Team Members
+                  <Shield className="h-4 w-4" />{t.settings.teamMembers}
                 </CardTitle>
                 <Badge variant="secondary">{biz.plan} plan</Badge>
               </div>
@@ -354,15 +358,39 @@ export function SettingsClient({ business: biz, profile, teamMembers, sequences,
             </CardContent>
           </Card>
           <p className="text-xs text-muted-foreground mt-3">
-            Team invites coming soon. Contact support to add team members.
+            {t.settings.teamInvitesSoon}
           </p>
+        </TabsContent>
+
+        {/* Language */}
+        <TabsContent value="language">
+          <div className="max-w-sm space-y-4">
+            <div>
+              <p className="text-sm font-medium mb-1">{t.settings.language}</p>
+              <p className="text-xs text-muted-foreground mb-4">{t.settings.languageDesc}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setLanguage('en')}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-colors ${language === 'en' ? 'border-[#0F4C81] bg-[#0F4C81]/5 text-[#0F4C81]' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                >
+                  🇬🇧 {t.settings.english}
+                </button>
+                <button
+                  onClick={() => setLanguage('so')}
+                  className={`flex-1 py-3 px-4 rounded-xl border-2 text-sm font-semibold transition-colors ${language === 'so' ? 'border-[#0F4C81] bg-[#0F4C81]/5 text-[#0F4C81]' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                >
+                  🇸🇴 {t.settings.somali}
+                </button>
+              </div>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Document Sequences */}
         <TabsContent value="documents">
           <Card className="max-w-2xl">
             <CardHeader>
-              <CardTitle className="text-base">Document Number Sequences</CardTitle>
+              <CardTitle className="text-base">{t.settings.docSequences}</CardTitle>
             </CardHeader>
             <CardContent>
               {sequences.length === 0 ? (

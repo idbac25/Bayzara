@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Plus, Pencil, UserCog, ShieldCheck, ShieldOff, Loader2, Clock, Activity } from 'lucide-react'
+import { useT } from '@/contexts/LanguageContext'
 
 interface StaffMember {
   id: string
@@ -40,19 +41,22 @@ interface Props {
   slug: string
 }
 
-const ROLE_LABEL = { owner: 'Owner', manager: 'Manager', cashier: 'Cashier' }
+// ROLE_LABEL is now built from t inside the component
 const ROLE_COLOR = { owner: 'bg-purple-100 text-purple-700', manager: 'bg-blue-100 text-blue-700', cashier: 'bg-slate-100 text-slate-700' }
 
-const ACTION_LABEL: Record<string, string> = {
-  pos_sale: 'Completed a sale',
-  debt_charge: 'Recorded credit sale',
-  debt_payment: 'Recorded payment',
-  shift_open: 'Opened shift',
-  shift_close: 'Closed shift',
-  staff_created: 'Added staff member',
-}
+// ACTION_LABEL is now built from t inside the component
 
 export function StaffClient({ business, staff, logs, slug }: Props) {
+  const t = useT()
+  const ROLE_LABEL = { owner: t.staff.owner, manager: t.staff.manager, cashier: t.staff.cashier }
+  const ACTION_LABEL: Record<string, string> = {
+    pos_sale: t.staff.completedSale,
+    debt_charge: t.staff.recordedCredit,
+    debt_payment: t.staff.recordedPayment,
+    shift_open: t.staff.openedShift,
+    shift_close: t.staff.closedShift,
+    staff_created: t.staff.addedStaff,
+  }
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [editTarget, setEditTarget] = useState<StaffMember | null>(null)
@@ -126,32 +130,32 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
   return (
     <div>
       <PageHeader
-        title="Staff"
-        description="Manage your team and track activity"
+        title={t.staff.title}
+        description={t.staff.subtitle}
         breadcrumbs={[
           { label: business.name, href: `/app/${slug}` },
-          { label: 'Staff' },
+          { label: t.staff.title },
         ]}
         action={
           <Button size="sm" onClick={openNew}>
-            <Plus className="h-4 w-4 mr-1.5" />Add Staff
+            <Plus className="h-4 w-4 mr-1.5" />{t.staff.addMember}
           </Button>
         }
       />
 
       <Tabs defaultValue="team">
         <TabsList className="mb-4">
-          <TabsTrigger value="team">Team ({staff.length})</TabsTrigger>
-          <TabsTrigger value="log">Activity Log</TabsTrigger>
+          <TabsTrigger value="team">{t.staff.team} ({staff.length})</TabsTrigger>
+          <TabsTrigger value="log">{t.staff.activityLog}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="team">
           {staff.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground border rounded-lg bg-white">
               <UserCog className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">No staff yet</p>
-              <p className="text-sm mt-1">Add your first team member to enable POS cashier login.</p>
-              <Button className="mt-4" size="sm" onClick={openNew}>Add Staff Member</Button>
+              <p className="font-medium">{t.staff.noStaffYet}</p>
+              <p className="text-sm mt-1">{t.staff.noStaffDesc}</p>
+              <Button className="mt-4" size="sm" onClick={openNew}>{t.staff.addMember}</Button>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -169,8 +173,8 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                       {s.has_pin
-                        ? <><ShieldCheck className="h-3.5 w-3.5 text-green-600" /><span className="text-green-600">PIN set</span></>
-                        : <><ShieldOff className="h-3.5 w-3.5 text-amber-500" /><span className="text-amber-600">No PIN</span></>
+                        ? <><ShieldCheck className="h-3.5 w-3.5 text-green-600" /><span className="text-green-600">{t.staff.pinSet}</span></>
+                        : <><ShieldOff className="h-3.5 w-3.5 text-amber-500" /><span className="text-amber-600">{t.staff.noPin}</span></>
                       }
                       {!s.is_active && <Badge variant="secondary" className="text-[10px] h-4">Inactive</Badge>}
                     </div>
@@ -184,7 +188,7 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
                         className={`flex-1 h-7 text-xs ${s.is_active ? 'text-red-600 border-red-200 hover:bg-red-50' : 'text-green-600 border-green-200 hover:bg-green-50'}`}
                         onClick={() => toggleActive(s)}
                       >
-                        {s.is_active ? 'Deactivate' : 'Activate'}
+                        {s.is_active ? t.staff.deactivate : t.staff.activate}
                       </Button>
                     </div>
                   </CardContent>
@@ -198,7 +202,7 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
           {logs.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground border rounded-lg bg-white">
               <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p>No activity recorded yet</p>
+              <p>{t.staff.noActivity}</p>
             </div>
           ) : (
             <div className="bg-white rounded-lg border overflow-hidden">
@@ -229,11 +233,11 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
       <Dialog open={isNew || !!editTarget} onOpenChange={open => { if (!open) closeDialog() }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{isNew ? 'Add Staff Member' : 'Edit Staff Member'}</DialogTitle>
+            <DialogTitle>{isNew ? t.staff.addMember : t.staff.editMember}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label>Full Name</Label>
+              <Label>{t.staff.fullName}</Label>
               <Input placeholder="e.g. Ahmed Hassan" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
@@ -241,18 +245,18 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
               <Input placeholder="252..." value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label>Role</Label>
+              <Label>{t.staff.role}</Label>
               <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as StaffMember['role'] }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cashier">Cashier</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="cashier">{t.staff.cashier}</SelectItem>
+                  <SelectItem value="manager">{t.staff.manager}</SelectItem>
+                  <SelectItem value="owner">{t.staff.owner}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="border-t pt-3 space-y-3">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">POS PIN (4 digits)</p>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">{t.staff.posPin}</p>
               <div className="space-y-1.5">
                 <Label>New PIN <span className="text-muted-foreground text-xs">{editTarget?.has_pin ? '(leave blank to keep current)' : '(optional)'}</span></Label>
                 <Input type="password" inputMode="numeric" maxLength={4} placeholder="••••" value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))} />
@@ -266,9 +270,9 @@ export function StaffClient({ business, staff, logs, slug }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeDialog}>{t.common.cancel}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Saving…</> : 'Save'}
+              {saving ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t.common.saving}</> : t.common.save}
             </Button>
           </DialogFooter>
         </DialogContent>

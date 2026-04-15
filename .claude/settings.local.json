@@ -29,7 +29,9 @@
       "Bash(grep -n \"select\" src/app/app/[slug]/layout.tsx)",
       "Bash(npm install:*)",
       "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('ScanLine:', !!l.ScanLine, 'ScanBarcode:', !!l.ScanBarcode\\)\")",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(cmd:*)",
+      "Bash(grep -n \"pos_reconciliation\\\\|pending_approval\\\\|reconcil\" /c/Users/cxc/bayzara/supabase/migrations/*.sql)"
     ]
   }
 }

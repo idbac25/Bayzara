@@ -14,6 +14,7 @@ import {
   Clock, ChevronRight, Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/contexts/LanguageContext'
 
 interface RestockRow {
   id: string
@@ -37,6 +38,7 @@ interface Props {
 type Filter = 'all' | 'unpaid' | 'overdue' | 'paid'
 
 export function RestocksClient({ business, restocks: initial }: Props) {
+  const t = useT()
   const router = useRouter()
   const [restocks, setRestocks] = useState(initial)
   const [filter, setFilter] = useState<Filter>('all')
@@ -75,18 +77,18 @@ export function RestocksClient({ business, restocks: initial }: Props) {
   }
 
   const FILTERS: { id: Filter; label: string }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'unpaid', label: 'Unpaid' },
-    { id: 'overdue', label: 'Overdue' },
-    { id: 'paid', label: 'Paid' },
+    { id: 'all', label: t.common.all },
+    { id: 'unpaid', label: t.common.unpaid },
+    { id: 'overdue', label: t.common.overdue },
+    { id: 'paid', label: t.common.paid },
   ]
 
   return (
     <div>
       <PageHeader
-        title="Restocks"
-        description="Stock received from suppliers"
-        breadcrumbs={[{ label: business.name, href: `/app/${business.slug}` }, { label: 'Restocks' }]}
+        title={t.restocks.title}
+        description={t.restocks.subtitle}
+        breadcrumbs={[{ label: business.name, href: `/app/${business.slug}` }, { label: t.restocks.title }]}
         action={
           <Button asChild className="bg-[#0F4C81] hover:bg-[#0d3d6b]">
             <Link href={`/app/${business.slug}/restocks/new`}>
@@ -102,7 +104,7 @@ export function RestocksClient({ business, restocks: initial }: Props) {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
               <TrendingDown className="h-4 w-4 text-[#0F4C81]" />
-              <span className="text-xs text-muted-foreground">Total Restocked</span>
+              <span className="text-xs text-muted-foreground">{t.restocks.totalRestocked}</span>
             </div>
             <p className="font-bold text-base">
               {formatCurrency(restocks.reduce((s, r) => s + r.total_cost, 0), cur)}
@@ -113,7 +115,7 @@ export function RestocksClient({ business, restocks: initial }: Props) {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="h-4 w-4 text-amber-500" />
-              <span className="text-xs text-muted-foreground">Owed to Suppliers</span>
+              <span className="text-xs text-muted-foreground">{t.restocks.owedToSuppliers}</span>
             </div>
             <p className={cn('font-bold text-base', totalOwed > 0 ? 'text-amber-600' : 'text-muted-foreground')}>
               {formatCurrency(totalOwed, cur)}
@@ -155,8 +157,8 @@ export function RestocksClient({ business, restocks: initial }: Props) {
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Package className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No restocks yet</p>
-          <p className="text-sm mt-1">Record stock received from your suppliers</p>
+          <p className="font-medium">{t.restocks.noRestocksYet}</p>
+          <p className="text-sm mt-1">{t.restocks.noRestocksDesc}</p>
           <Button asChild className="mt-4 bg-[#0F4C81] hover:bg-[#0d3d6b]">
             <Link href={`/app/${business.slug}/restocks/new`}>
               <Plus className="h-4 w-4 mr-1.5" />Record First Restock
@@ -189,7 +191,7 @@ export function RestocksClient({ business, restocks: initial }: Props) {
                             : 'bg-amber-100 text-amber-700'
                         )}
                       >
-                        {r.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Unpaid'}
+                        {r.status === 'paid' ? t.common.paid : isOverdue ? t.common.overdue : t.common.unpaid}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -215,7 +217,7 @@ export function RestocksClient({ business, restocks: initial }: Props) {
                 {r.status === 'unpaid' && (
                   <div className="mt-3 pt-3 border-t flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
-                      {r.payment_method === 'credit' ? 'Bought on credit' : 'Cash purchase'}
+                      {r.payment_method === 'credit' ? t.restocks.boughtOnCredit : t.restocks.cashPurchase}
                     </p>
                     <Button
                       size="sm"
@@ -226,7 +228,7 @@ export function RestocksClient({ business, restocks: initial }: Props) {
                     >
                       {payingId === r.id
                         ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : <><CheckCircle2 className="h-3 w-3 mr-1" />Mark Paid</>
+                        : <><CheckCircle2 className="h-3 w-3 mr-1" />{t.common.markPaid}</>
                       }
                     </Button>
                   </div>

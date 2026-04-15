@@ -19,6 +19,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { Store, Plus, MoreHorizontal, Pencil, Trash2, Phone, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useT } from '@/contexts/LanguageContext'
 
 interface Vendor {
   id: string
@@ -51,6 +52,7 @@ const emptyForm = {
 
 export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
   const { business } = useBusiness()
+  const t = useT()
   const [vendors, setVendors] = useState(initial)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Vendor | null>(null)
@@ -199,12 +201,12 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
   return (
     <div>
       <PageHeader
-        title="Suppliers"
-        description="Wholesalers and importers you buy stock from"
-        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Suppliers' }]}
+        title={t.suppliers.title}
+        description={t.suppliers.subtitle}
+        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: t.suppliers.title }]}
         action={
           <Button onClick={openNew} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
-            <Plus className="mr-2 h-4 w-4" />Add Supplier
+            <Plus className="mr-2 h-4 w-4" />{t.suppliers.addSupplier}
           </Button>
         }
       />
@@ -212,9 +214,9 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
       {active.length === 0 ? (
         <EmptyState
           icon={Store}
-          title="No suppliers yet"
-          description="Add the wholesalers and importers you buy stock from."
-          actionLabel="Add Supplier"
+          title={t.suppliers.noSuppliersYet}
+          description={t.suppliers.noSuppliersDesc}
+          actionLabel={t.suppliers.addSupplier}
           onAction={openNew}
         />
       ) : (
@@ -224,11 +226,11 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{editing ? 'Edit Supplier' : 'Add Supplier'}</SheetTitle>
+            <SheetTitle>{editing ? t.suppliers.editSupplier : t.suppliers.addSupplier}</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div>
-              <Label>Supplier Name *</Label>
+              <Label>{t.suppliers.supplierName}</Label>
               <Input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -237,7 +239,7 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
               />
             </div>
             <div>
-              <Label>Contact Person</Label>
+              <Label>{t.suppliers.contactPerson}</Label>
               <Input
                 value={form.contact_name}
                 onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
@@ -256,7 +258,7 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
             </div>
             <div>
               <Label className="flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-blue-500" />EVC Phone (for payments)
+                <Zap className="h-3.5 w-3.5 text-blue-500" />{t.suppliers.evcPhone}
               </Label>
               <Input
                 value={form.evc_phone}
@@ -299,7 +301,7 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
               disabled={saving}
               className="w-full bg-[#0F4C81] hover:bg-[#0d3f6e]"
             >
-              {saving ? 'Saving…' : editing ? 'Update Supplier' : 'Add Supplier'}
+              {saving ? t.common.saving : editing ? `${t.common.update} ${t.suppliers.title.toLowerCase()}` : t.suppliers.addSupplier}
             </Button>
           </div>
         </SheetContent>
@@ -309,8 +311,8 @@ export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
         open={!!deleteDialog}
         onOpenChange={o => !o && setDeleteDialog(null)}
         title={`Archive ${deleteDialog?.name}?`}
-        description="This supplier will be hidden but their restock history is preserved."
-        confirmLabel="Archive"
+        description={t.suppliers.archiveConfirm}
+        confirmLabel={t.common.archive}
         loading={deleting}
         onConfirm={() => deleteDialog && handleArchive(deleteDialog)}
       />

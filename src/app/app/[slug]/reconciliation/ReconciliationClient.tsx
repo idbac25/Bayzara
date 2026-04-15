@@ -17,6 +17,7 @@ import {
   Plus, X, ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/contexts/LanguageContext'
 
 interface Staff { id: string; name: string; role: string }
 
@@ -67,6 +68,7 @@ interface Props {
 const OTHER_PROVIDERS = ['Edahab', 'Premier Wallet', 'Bank Transfer', 'Other']
 
 export function ReconciliationClient({ business, todayRec, liveTotals, staff, history, slug, today }: Props) {
+  const t = useT()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [selectedStaff, setSelectedStaff] = useState('')
@@ -199,7 +201,7 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
   function VariancePill({ variance }: { variance: number }) {
     if (variance === 0) return (
       <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-        <CheckCircle2 className="h-3 w-3" />Balanced
+        <CheckCircle2 className="h-3 w-3" />{t.reconciliation.balanced}
       </span>
     )
     return (
@@ -213,15 +215,15 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
   return (
     <div>
       <PageHeader
-        title="Daily Reconciliation"
+        title={t.reconciliation.title}
         description={`${new Date(today).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`}
         breadcrumbs={[
           { label: business.name, href: `/app/${slug}` },
-          { label: 'Reconciliation' },
+          { label: t.reconciliation.title },
         ]}
         action={
           <Button variant="outline" size="sm" onClick={printReport}>
-            <Printer className="h-4 w-4 mr-1.5" />Print
+            <Printer className="h-4 w-4 mr-1.5" />{t.common.print}
           </Button>
         }
       />
@@ -229,10 +231,10 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
       {/* Live totals */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'EVC Plus',       value: liveTotals.evc,    icon: Zap,         color: 'text-blue-600',   bg: 'bg-blue-50' },
-          { label: 'Mobile Money',   value: liveTotals.cash,   icon: Smartphone,  color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Credit Sales',   value: liveTotals.credit, icon: CreditCard,  color: 'text-amber-600',  bg: 'bg-amber-50' },
-          { label: 'Gross Total',    value: grandTotal,        icon: TrendingUp,  color: 'text-[#0F4C81]',  bg: 'bg-[#0F4C81]/10' },
+          { label: t.reconciliation.evcPlus,     value: liveTotals.evc,    icon: Zap,         color: 'text-blue-600',   bg: 'bg-blue-50' },
+          { label: t.reconciliation.mobileMoney, value: liveTotals.cash,   icon: Smartphone,  color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: t.reconciliation.creditSales, value: liveTotals.credit, icon: CreditCard,  color: 'text-amber-600',  bg: 'bg-amber-50' },
+          { label: t.reconciliation.grossTotal,  value: grandTotal,        icon: TrendingUp,  color: 'text-[#0F4C81]',  bg: 'bg-[#0F4C81]/10' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label}>
             <CardContent className="p-4">
@@ -252,16 +254,16 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               {isApproved
-                ? <><Lock className="h-4 w-4 text-green-600" />Approved</>
+                ? <><Lock className="h-4 w-4 text-green-600" />{t.common.approved}</>
                 : isPending2
-                ? <><Lock className="h-4 w-4 text-amber-500" />Awaiting Approval</>
+                ? <><Lock className="h-4 w-4 text-amber-500" />{t.reconciliation.awaitingApproval}</>
                 : isOpen
-                ? <><ShoppingCart className="h-4 w-4 text-blue-600" />Shift Open</>
-                : <><ShoppingCart className="h-4 w-4 text-muted-foreground" />Start Shift</>
+                ? <><ShoppingCart className="h-4 w-4 text-blue-600" />{t.reconciliation.shiftOpen}</>
+                : <><ShoppingCart className="h-4 w-4 text-muted-foreground" />{t.reconciliation.startShift}</>
               }
-              {isApproved && <Badge className="bg-green-100 text-green-700 border-0 text-xs">Approved</Badge>}
-              {isPending2 && <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">Pending</Badge>}
-              {isOpen     && <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">Active</Badge>}
+              {isApproved && <Badge className="bg-green-100 text-green-700 border-0 text-xs">{t.common.approved}</Badge>}
+              {isPending2 && <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">{t.common.pending}</Badge>}
+              {isOpen     && <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">{t.common.active}</Badge>}
             </CardTitle>
           </CardHeader>
 
@@ -269,12 +271,12 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
             {/* ── NOT STARTED ── */}
             {notStarted && (
               <>
-                <p className="text-sm text-muted-foreground">Open today&apos;s shift to start tracking sales.</p>
+                <p className="text-sm text-muted-foreground">{t.reconciliation.openShiftDesc}</p>
                 {staff.length > 0 && (
                   <div className="space-y-1.5">
                     <Label>Opened by</Label>
                     <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                      <SelectTrigger><SelectValue placeholder="Select staff member" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t.reconciliation.selectStaff} /></SelectTrigger>
                       <SelectContent>
                         {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                       </SelectContent>
@@ -282,7 +284,7 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                   </div>
                 )}
                 <Button className="w-full" onClick={handleOpen} disabled={loading}>
-                  {loading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Opening…</> : 'Open Shift'}
+                  {loading ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t.reconciliation.openShift}…</> : t.reconciliation.openShift}
                 </Button>
               </>
             )}
@@ -292,23 +294,23 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
               <>
                 <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Opened by</span>
+                    <span className="text-muted-foreground">{t.reconciliation.openedBy}</span>
                     <span>{(todayRec?.opened_by as { name: string } | null)?.name ?? '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sales today</span>
-                    <span>{liveTotals.salesCount} transactions</span>
+                    <span className="text-muted-foreground">{t.reconciliation.salesToday}</span>
+                    <span>{liveTotals.salesCount} {t.reconciliation.transactions}</span>
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold">Close &amp; Reconcile</p>
-                <p className="text-xs text-muted-foreground -mt-2">Enter what was actually received in each account today.</p>
+                <p className="text-sm font-semibold">{t.reconciliation.closeAndReconcile}</p>
+                <p className="text-xs text-muted-foreground -mt-2">{t.reconciliation.enterReceived}</p>
 
                 {staff.length > 0 && (
                   <div className="space-y-1.5">
                     <Label>Closed by</Label>
                     <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                      <SelectTrigger><SelectValue placeholder="Select staff member" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t.reconciliation.selectStaff} /></SelectTrigger>
                       <SelectContent>
                         {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                       </SelectContent>
@@ -320,8 +322,8 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                 <div className="space-y-1.5">
                   <Label className="flex items-center gap-1.5">
                     <Zap className="h-3.5 w-3.5 text-blue-500" />
-                    EVC received today ({cur})
-                    <span className="text-muted-foreground font-normal text-xs">— from EVC account</span>
+                    {t.reconciliation.evcReceivedToday} ({cur})
+                    <span className="text-muted-foreground font-normal text-xs">{t.reconciliation.fromEvcAccount}</span>
                   </Label>
                   <Input
                     type="number" min="0" step="0.01" placeholder="0.00"
@@ -342,8 +344,8 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
                     <Smartphone className="h-3.5 w-3.5 text-purple-500" />
-                    Other mobile money received ({cur})
-                    <span className="text-muted-foreground font-normal text-xs">— Edahab, Premier…</span>
+                    {t.reconciliation.otherMobileReceived} ({cur})
+                    <span className="text-muted-foreground font-normal text-xs">{t.reconciliation.edahabPremier}</span>
                   </Label>
                   {otherPayments.map(p => (
                     <div key={p.id} className="flex gap-2 items-center">
@@ -371,7 +373,7 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                     onClick={addOtherPayment}
                     className="flex items-center gap-1 text-xs text-[#0F4C81] hover:underline"
                   >
-                    <Plus className="h-3 w-3" />Add another provider
+                    <Plus className="h-3 w-3" />{t.reconciliation.addAnotherProvider}
                   </button>
                   {enteredOther > 0 && (
                     <div className="flex items-center gap-2">
@@ -385,13 +387,13 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                 {/* Credit is auto */}
                 <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 flex items-center justify-between text-sm">
                   <span className="flex items-center gap-1.5 text-amber-700">
-                    <CreditCard className="h-3.5 w-3.5" />Credit sales (auto)
+                    <CreditCard className="h-3.5 w-3.5" />{t.reconciliation.creditSalesAuto}
                   </span>
                   <span className="font-semibold text-amber-700">{formatCurrency(liveTotals.credit, cur)}</span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Notes <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Label>{t.common.notes} <span className="text-muted-foreground text-xs">({t.common.optional})</span></Label>
                   <Input
                     placeholder="Any discrepancies or remarks…"
                     value={notes}
@@ -405,8 +407,8 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                   disabled={loading || isPending}
                 >
                   {loading
-                    ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Closing…</>
-                    : 'Close & Send for Approval'
+                    ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />{t.reconciliation.closeAndSend}…</>
+                    : t.reconciliation.closeAndSend
                   }
                 </Button>
               </>
@@ -417,14 +419,14 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
               <div className="space-y-3 text-sm">
                 <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-1.5">
                   <p className="font-medium text-amber-800 flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5" />Waiting for manager approval
+                    <Loader2 className="h-3.5 w-3.5" />{t.reconciliation.waitingApproval}
                   </p>
-                  <p className="text-xs text-amber-700">This reconciliation has been submitted and is awaiting review.</p>
+                  <p className="text-xs text-amber-700">{t.reconciliation.submittedAwaiting}</p>
                 </div>
                 {[
-                  { label: 'EVC System', value: todayRec?.system_evc_total ?? 0 },
-                  { label: 'Mobile Money System', value: todayRec?.system_cash_total ?? 0 },
-                  { label: 'Credit Sales', value: todayRec?.system_credit_total ?? 0 },
+                  { label: t.reconciliation.evcSystem, value: todayRec?.system_evc_total ?? 0 },
+                  { label: t.reconciliation.mobileMoneySys, value: todayRec?.system_cash_total ?? 0 },
+                  { label: t.reconciliation.creditSales, value: todayRec?.system_credit_total ?? 0 },
                 ].map(row => (
                   <div key={row.label} className="flex justify-between">
                     <span className="text-muted-foreground">{row.label}</span>
@@ -432,7 +434,7 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
                   </div>
                 ))}
                 <div className="flex justify-between font-semibold pt-1 border-t">
-                  <span>Net Variance</span>
+                  <span>{t.reconciliation.netVariance}</span>
                   <span className={cn((todayRec?.cash_variance ?? 0) < 0 ? 'text-red-600' : (todayRec?.cash_variance ?? 0) > 0 ? 'text-amber-600' : 'text-green-600')}>
                     {(todayRec?.cash_variance ?? 0) >= 0 ? '+' : ''}{formatCurrency(todayRec?.cash_variance ?? 0, cur)}
                   </span>
@@ -446,7 +448,7 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
               <div className="space-y-2 text-sm">
                 <div className="rounded-lg bg-green-50 border border-green-200 p-3 space-y-1.5">
                   <p className="font-medium text-green-800 flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4" />Approved by manager
+                    <CheckCircle2 className="h-4 w-4" />{t.reconciliation.approvedByManager}
                   </p>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Net variance</span>
@@ -464,11 +466,11 @@ export function ReconciliationClient({ business, todayRec, liveTotals, staff, hi
         {/* History */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Last 14 Days</CardTitle>
+            <CardTitle className="text-base">{t.reconciliation.last14Days}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {history.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-4 pb-4">No history yet.</p>
+              <p className="text-sm text-muted-foreground px-4 pb-4">{t.reconciliation.noHistoryYet}</p>
             ) : (
               <div className="divide-y">
                 {history.map(h => (
