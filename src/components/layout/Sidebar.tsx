@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useBusiness, useFeature } from '@/contexts/BusinessContext'
+import { useLanguage, useT } from '@/contexts/LanguageContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
@@ -11,6 +12,7 @@ import {
   ChevronLeft, ChevronRight, BarChart3, Kanban, X, Monitor,
   UserRound, BookOpen, UserCog, ClipboardCheck, RefreshCw
 } from 'lucide-react'
+import type { Translations } from '@/lib/i18n'
 
 interface NavItem {
   label: string
@@ -24,167 +26,167 @@ interface NavSection {
   items: NavItem[]
 }
 
-function buildShopNav(slug: string, hasEvc: boolean): NavSection[] {
+function buildShopNav(slug: string, hasEvc: boolean, t: Translations): NavSection[] {
   const base = `/app/${slug}`
   return [
     {
       items: [
-        { label: 'Dashboard', href: base, icon: LayoutDashboard },
+        { label: t.nav.dashboard, href: base, icon: LayoutDashboard },
       ]
     },
     {
-      title: 'SALES',
+      title: t.nav.sales,
       items: [
-        { label: 'POS', href: `${base}/pos`, icon: Monitor },
-        { label: 'Customers', href: `${base}/customers`, icon: UserRound },
-        { label: 'Debt Book', href: `${base}/debt-book`, icon: BookOpen },
+        { label: t.nav.pos, href: `${base}/pos`, icon: Monitor },
+        { label: t.nav.customers, href: `${base}/customers`, icon: UserRound },
+        { label: t.nav.debtBook, href: `${base}/debt-book`, icon: BookOpen },
       ]
     },
     {
-      title: 'INVENTORY',
+      title: t.nav.inventory,
       items: [
-        { label: 'Products', href: `${base}/products`, icon: ShoppingBag },
-        { label: 'Stock', href: `${base}/inventory`, icon: Package },
-        { label: 'Restock', href: `${base}/restocks`, icon: RefreshCw },
-        { label: 'Suppliers', href: `${base}/vendors`, icon: Store },
+        { label: t.nav.products, href: `${base}/products`, icon: ShoppingBag },
+        { label: t.nav.stock, href: `${base}/inventory`, icon: Package },
+        { label: t.nav.restock, href: `${base}/restocks`, icon: RefreshCw },
+        { label: t.nav.suppliers, href: `${base}/vendors`, icon: Store },
       ]
     },
     {
-      title: 'OPERATIONS',
+      title: t.nav.operations,
       items: [
-        { label: 'Reconciliation', href: `${base}/reconciliation`, icon: ClipboardCheck },
-        { label: 'Staff', href: `${base}/staff`, icon: UserCog },
+        { label: t.nav.reconciliation, href: `${base}/reconciliation`, icon: ClipboardCheck },
+        { label: t.nav.staff, href: `${base}/staff`, icon: UserCog },
       ]
     },
     {
-      title: 'FINANCE',
+      title: t.nav.finance,
       items: [
-        { label: 'EVC Plus', href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
+        { label: t.nav.evcPlus, href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
       ]
     },
     {
-      title: 'SETTINGS',
+      title: t.nav.settings_section,
       items: [
-        { label: 'Settings', href: `${base}/settings`, icon: Settings },
+        { label: t.nav.settings, href: `${base}/settings`, icon: Settings },
       ]
     },
   ]
 }
 
-function buildB2BNav(slug: string, hasEvc: boolean): NavSection[] {
+function buildB2BNav(slug: string, hasEvc: boolean, t: Translations): NavSection[] {
   const base = `/app/${slug}`
   return [
     {
       items: [
-        { label: 'Dashboard', href: base, icon: LayoutDashboard },
+        { label: t.nav.dashboard, href: base, icon: LayoutDashboard },
       ]
     },
     {
-      title: 'SALES',
+      title: t.nav.sales,
       items: [
-        { label: 'Clients', href: `${base}/clients`, icon: Users },
-        { label: 'Quotations', href: `${base}/quotations`, icon: FileText },
-        { label: 'Invoices', href: `${base}/invoices`, icon: Receipt },
+        { label: t.nav.clients, href: `${base}/clients`, icon: Users },
+        { label: t.nav.quotations, href: `${base}/quotations`, icon: FileText },
+        { label: t.nav.invoices, href: `${base}/invoices`, icon: Receipt },
       ]
     },
     {
-      title: 'PURCHASES',
+      title: t.nav.purchases,
       items: [
-        { label: 'Vendors', href: `${base}/vendors`, icon: Store },
-        { label: 'Purchases & Bills', href: `${base}/purchases`, icon: ShoppingCart },
+        { label: t.nav.vendors, href: `${base}/vendors`, icon: Store },
+        { label: t.nav.purchasesAndBills, href: `${base}/purchases`, icon: ShoppingCart },
       ]
     },
     {
-      title: 'CRM',
+      title: t.nav.crm,
       items: [
-        { label: 'Leads', href: `${base}/leads`, icon: Kanban },
-        { label: 'Pipelines', href: `${base}/leads/pipelines`, icon: BarChart3 },
+        { label: t.nav.leads, href: `${base}/leads`, icon: Kanban },
+        { label: t.nav.pipelines, href: `${base}/leads/pipelines`, icon: BarChart3 },
       ]
     },
     {
-      title: 'INVENTORY',
+      title: t.nav.inventory,
       items: [
-        { label: 'Items', href: `${base}/inventory`, icon: Package },
+        { label: t.nav.items, href: `${base}/inventory`, icon: Package },
       ]
     },
     {
-      title: 'FINANCE',
+      title: t.nav.finance,
       items: [
-        { label: 'Reports', href: `${base}/reports`, icon: PieChart },
-        { label: 'Bank & Payments', href: `${base}/bank-accounts`, icon: Wallet },
-        { label: 'EVC Plus', href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
+        { label: t.nav.reports, href: `${base}/reports`, icon: PieChart },
+        { label: t.nav.bankAndPayments, href: `${base}/bank-accounts`, icon: Wallet },
+        { label: t.nav.evcPlus, href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
       ]
     },
     {
-      title: 'SETTINGS',
+      title: t.nav.settings_section,
       items: [
-        { label: 'Settings', href: `${base}/settings`, icon: Settings },
+        { label: t.nav.settings, href: `${base}/settings`, icon: Settings },
       ]
     },
   ]
 }
 
-function buildAllNav(slug: string, hasEvc: boolean, hasPos: boolean): NavSection[] {
+function buildAllNav(slug: string, hasEvc: boolean, hasPos: boolean, t: Translations): NavSection[] {
   const base = `/app/${slug}`
   return [
     {
       items: [
-        { label: 'Dashboard', href: base, icon: LayoutDashboard },
+        { label: t.nav.dashboard, href: base, icon: LayoutDashboard },
       ]
     },
     {
-      title: 'SALES',
+      title: t.nav.sales,
       items: [
-        ...(hasPos ? [{ label: 'POS', href: `${base}/pos`, icon: Monitor }] : []),
-        ...(hasPos ? [{ label: 'Customers', href: `${base}/customers`, icon: UserRound }] : []),
-        ...(hasPos ? [{ label: 'Debt Book', href: `${base}/debt-book`, icon: BookOpen }] : []),
-        { label: 'Clients', href: `${base}/clients`, icon: Users },
-        { label: 'Quotations', href: `${base}/quotations`, icon: FileText },
-        { label: 'Invoices', href: `${base}/invoices`, icon: Receipt },
+        ...(hasPos ? [{ label: t.nav.pos, href: `${base}/pos`, icon: Monitor }] : []),
+        ...(hasPos ? [{ label: t.nav.customers, href: `${base}/customers`, icon: UserRound }] : []),
+        ...(hasPos ? [{ label: t.nav.debtBook, href: `${base}/debt-book`, icon: BookOpen }] : []),
+        { label: t.nav.clients, href: `${base}/clients`, icon: Users },
+        { label: t.nav.quotations, href: `${base}/quotations`, icon: FileText },
+        { label: t.nav.invoices, href: `${base}/invoices`, icon: Receipt },
       ]
     },
     {
-      title: 'PURCHASES',
+      title: t.nav.purchases,
       items: [
-        { label: 'Vendors', href: `${base}/vendors`, icon: Store },
-        { label: 'Purchases & Bills', href: `${base}/purchases`, icon: ShoppingCart },
+        { label: t.nav.vendors, href: `${base}/vendors`, icon: Store },
+        { label: t.nav.purchasesAndBills, href: `${base}/purchases`, icon: ShoppingCart },
       ]
     },
     {
-      title: 'CRM',
+      title: t.nav.crm,
       items: [
-        { label: 'Leads', href: `${base}/leads`, icon: Kanban },
-        { label: 'Pipelines', href: `${base}/leads/pipelines`, icon: BarChart3 },
+        { label: t.nav.leads, href: `${base}/leads`, icon: Kanban },
+        { label: t.nav.pipelines, href: `${base}/leads/pipelines`, icon: BarChart3 },
       ]
     },
     {
-      title: 'INVENTORY',
+      title: t.nav.inventory,
       items: [
-        ...(hasPos ? [{ label: 'Products', href: `${base}/products`, icon: ShoppingBag }] : []),
-        { label: 'Items', href: `${base}/inventory`, icon: Package },
-        ...(hasPos ? [{ label: 'Restock', href: `${base}/restocks`, icon: RefreshCw }] : []),
-        ...(hasPos ? [{ label: 'Suppliers', href: `${base}/vendors`, icon: Store }] : []),
+        ...(hasPos ? [{ label: t.nav.products, href: `${base}/products`, icon: ShoppingBag }] : []),
+        { label: t.nav.items, href: `${base}/inventory`, icon: Package },
+        ...(hasPos ? [{ label: t.nav.restock, href: `${base}/restocks`, icon: RefreshCw }] : []),
+        ...(hasPos ? [{ label: t.nav.suppliers, href: `${base}/vendors`, icon: Store }] : []),
       ]
     },
     {
-      title: 'OPERATIONS',
+      title: t.nav.operations,
       items: [
-        ...(hasPos ? [{ label: 'Reconciliation', href: `${base}/reconciliation`, icon: ClipboardCheck }] : []),
-        { label: 'Staff', href: `${base}/staff`, icon: UserCog },
+        ...(hasPos ? [{ label: t.nav.reconciliation, href: `${base}/reconciliation`, icon: ClipboardCheck }] : []),
+        { label: t.nav.staff, href: `${base}/staff`, icon: UserCog },
       ]
     },
     {
-      title: 'FINANCE',
+      title: t.nav.finance,
       items: [
-        { label: 'Reports', href: `${base}/reports`, icon: PieChart },
-        { label: 'Bank & Payments', href: `${base}/bank-accounts`, icon: Wallet },
-        { label: 'EVC Plus', href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
+        { label: t.nav.reports, href: `${base}/reports`, icon: PieChart },
+        { label: t.nav.bankAndPayments, href: `${base}/bank-accounts`, icon: Wallet },
+        { label: t.nav.evcPlus, href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
       ]
     },
     {
-      title: 'SETTINGS',
+      title: t.nav.settings_section,
       items: [
-        { label: 'Settings', href: `${base}/settings`, icon: Settings },
+        { label: t.nav.settings, href: `${base}/settings`, icon: Settings },
       ]
     },
   ]
@@ -201,6 +203,8 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const hasPos = useFeature('pos')
   const hasEvc = !!(business as unknown as Record<string, unknown>).has_evc
+  const { language, setLanguage } = useLanguage()
+  const t = useT()
 
   useEffect(() => {
     const stored = localStorage.getItem('sidebar-collapsed')
@@ -215,9 +219,9 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
 
   const mode = business.mode ?? 'shop'
   const nav =
-    mode === 'b2b' ? buildB2BNav(business.slug, hasEvc) :
-    mode === 'all' ? buildAllNav(business.slug, hasEvc, hasPos) :
-    buildShopNav(business.slug, hasEvc)
+    mode === 'b2b' ? buildB2BNav(business.slug, hasEvc, t) :
+    mode === 'all' ? buildAllNav(business.slug, hasEvc, hasPos, t) :
+    buildShopNav(business.slug, hasEvc, t)
 
   const isActive = (href: string) => {
     const cleanHref = href.split('?')[0]
@@ -302,15 +306,56 @@ export function Sidebar({ onClose, mobile }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Plan badge */}
-      {(!collapsed || mobile) && (
-        <div className="p-3 border-t border-white/10">
-          <div className="bg-white/10 rounded-md px-3 py-2 text-xs text-white/60">
-            <span className="uppercase font-semibold text-white/40 text-[10px]">Plan</span>
-            <p className="font-medium text-white capitalize">{business.plan}</p>
-          </div>
+      {/* Bottom: language toggle + plan badge */}
+      <div className="border-t border-white/10">
+        {/* Language toggle */}
+        <div className={cn('px-3 pt-3', collapsed && !mobile ? 'flex justify-center' : '')}>
+          {(!collapsed || mobile) ? (
+            <div className="flex items-center gap-1 bg-white/10 rounded-md p-1">
+              <button
+                onClick={() => setLanguage('en')}
+                className={cn(
+                  'flex-1 text-xs font-semibold py-1 rounded transition-colors',
+                  language === 'en'
+                    ? 'bg-white text-[#1a2744]'
+                    : 'text-white/50 hover:text-white'
+                )}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLanguage('so')}
+                className={cn(
+                  'flex-1 text-xs font-semibold py-1 rounded transition-colors',
+                  language === 'so'
+                    ? 'bg-white text-[#1a2744]'
+                    : 'text-white/50 hover:text-white'
+                )}
+              >
+                SO
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setLanguage(language === 'en' ? 'so' : 'en')}
+              title={language === 'en' ? 'Switch to Somali' : 'Switch to English'}
+              className="text-white/50 hover:text-white text-xs font-bold"
+            >
+              {language.toUpperCase()}
+            </button>
+          )}
         </div>
-      )}
+
+        {/* Plan badge */}
+        {(!collapsed || mobile) && (
+          <div className="p-3">
+            <div className="bg-white/10 rounded-md px-3 py-2 text-xs text-white/60">
+              <span className="uppercase font-semibold text-white/40 text-[10px]">Plan</span>
+              <p className="font-medium text-white capitalize">{business.plan}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

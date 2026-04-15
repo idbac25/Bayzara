@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { BusinessContext } from '@/contexts/BusinessContext'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import type { Business, UserRole } from '@/types/database'
@@ -23,6 +24,7 @@ export function AppShell({ business, userRole, user, businesses, announcement, c
 
   return (
     <BusinessContext.Provider value={{ business, userRole }}>
+    <LanguageProvider>
       <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex flex-shrink-0">
@@ -60,6 +62,7 @@ export function AppShell({ business, userRole, user, businesses, announcement, c
         </div>
       </div>
       <Toaster position="top-right" richColors />
+    </LanguageProvider>
     </BusinessContext.Provider>
   )
 }
