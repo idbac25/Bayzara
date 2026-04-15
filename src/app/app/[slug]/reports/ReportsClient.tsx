@@ -25,6 +25,7 @@ interface Invoice {
   id: string
   document_number: string
   date: string
+  created_at?: string
   total: number
   amount_paid: number
   status: string
@@ -64,6 +65,28 @@ interface OpenInvoice {
   clients: Array<{ name: string }> | null
 }
 
+interface PosLineItem {
+  inventory_item_id: string | null
+  name: string
+  quantity: number
+  amount: number
+  product_name: string | null
+  purchase_price: number
+  created_at: string
+  date: string
+}
+
+interface VendorRestock {
+  id: string
+  date: string
+  due_date: string | null
+  total_cost: number
+  status: string
+  payment_method: string
+  vendor_name: string | null
+  product_name: string | null
+}
+
 interface Props {
   slug: string
   currency: string
@@ -72,6 +95,8 @@ interface Props {
   expenses: Expense[]
   evcTxns: EvcTxn[]
   openInvoices: OpenInvoice[]
+  posLineItems: PosLineItem[]
+  vendorRestocks: VendorRestock[]
 }
 
 // ── Period helpers ────────────────────────────────────────────────────────────
@@ -241,7 +266,7 @@ const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'custom',label: 'Custom' },
 ]
 
-export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, openInvoices }: Props) {
+export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, openInvoices, posLineItems, vendorRestocks }: Props) {
   const { business } = useBusiness()
 
   const [period, setPeriod]       = useState<Period>('month')
@@ -287,6 +312,77 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
   const posEvc    = filtPos.filter(i => i.payment_method === 'evc').reduce((s, i) => s + i.total, 0)
   const posCash   = filtPos.filter(i => i.payment_method === 'cash' || !i.payment_method).reduce((s, i) => s + i.total, 0)
   const posCredit = filtPos.filter(i => i.payment_method === 'credit').reduce((s, i) => s + i.total, 0)
+
+  // ── P&L computations ──────────────────────────────────────────────────────
+  const filtPosLines = useMemo(() =>
+    posLineItems.filter(li => inRange(li.date, from, to)), [posLineItems, from, to])
+
+  const totalCOGS = useMemo(() =>
+    filtPosLines.reduce((s, li) => s + li.quantity * (li.purchase_price ?? 0), 0),
+  [filtPosLines])
+
+  const grossProfit  = totalIncome - totalCOGS
+  const netProfit2   = grossProfit - totalExpense   // more accurate net profit
+  const grossMarginPct = totalIncome > 0 ? (grossProfit / totalIncome) * 100 : 0
+  const netMarginPct   = totalIncome > 0 ? (netProfit2  / totalIncome) * 100 : 0
+
+  // ── Top products ──────────────────────────────────────────────────────────
+  const topProducts = useMemo(() => {
+    const map = new Map<string, { name: string; qty: number; revenue: number; cogs: number }>()
+    filtPosLines.forEach(li => {
+      const key = li.inventory_item_id ?? `nokey_${li.name}`
+      const existing = map.get(key) ?? { name: li.product_name ?? li.name, qty: 0, revenue: 0, cogs: 0 }
+      map.set(key, {
+        ...existing,
+        qty: existing.qty + (li.quantity ?? 0),
+        revenue: existing.revenue + (li.amount ?? 0),
+        cogs: existing.cogs + (li.quantity ?? 0) * (li.purchase_price ?? 0),
+      })
+    })
+    return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue)
+  }, [filtPosLines])
+
+  // ── Timing analysis ───────────────────────────────────────────────────────
+  const hourData = useMemo(() => {
+    const hours = Array.from({ length: 24 }, (_, h) => ({ hour: h, label: `${String(h).padStart(2,'0')}:00`, revenue: 0, count: 0 }))
+    invoices
+      .filter(i => i.source === 'pos' && inRange(i.date, from, to) && i.created_at)
+      .forEach(i => {
+        const h = new Date(i.created_at!).getHours()
+        hours[h].revenue += i.total
+        hours[h].count++
+      })
+    return hours
+  }, [invoices, from, to])
+
+  const dayData = useMemo(() => {
+    const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+    const days = DAYS.map(d => ({ day: d, revenue: 0, count: 0 }))
+    invoices
+      .filter(i => i.source === 'pos' && inRange(i.date, from, to))
+      .forEach(i => {
+        const d = new Date(i.date + 'T12:00:00').getDay()
+        days[d].revenue += i.total
+        days[d].count++
+      })
+    return days
+  }, [invoices, from, to])
+
+  // ── Vendor payables ───────────────────────────────────────────────────────
+  const today = new Date().toISOString().split('T')[0]
+  const unpaidRestocks = vendorRestocks.filter(r => r.status === 'unpaid')
+  const totalVendorOwed = unpaidRestocks.reduce((s, r) => s + r.total_cost, 0)
+  const overdueRestocks = unpaidRestocks.filter(r => r.due_date && r.due_date < today)
+
+  const vendorGroups = useMemo(() => {
+    const map = new Map<string, { name: string; owed: number; restocks: VendorRestock[] }>()
+    unpaidRestocks.forEach(r => {
+      const key = r.vendor_name ?? 'Unknown Supplier'
+      const existing = map.get(key) ?? { name: key, owed: 0, restocks: [] }
+      map.set(key, { ...existing, owed: existing.owed + r.total_cost, restocks: [...existing.restocks, r] })
+    })
+    return Array.from(map.values()).sort((a, b) => b.owed - a.owed)
+  }, [unpaidRestocks])
 
   // Chart data
   const chartItems = useMemo(() => {
@@ -392,14 +488,18 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-white border rounded-lg p-1 h-auto gap-1">
+        <TabsList className="bg-white border rounded-lg p-1 h-auto gap-1 flex-wrap">
           {[
             { value: 'overview',  label: 'Overview' },
+            { value: 'pl',        label: 'P&L' },
+            { value: 'products',  label: 'Products' },
+            { value: 'timing',    label: 'Timing' },
             { value: 'sales',     label: 'Sales' },
             { value: 'pos',       label: 'POS' },
             { value: 'evc',       label: 'EVC' },
             { value: 'expenses',  label: 'Expenses' },
             { value: 'ar',        label: 'Receivables' },
+            { value: 'suppliers', label: 'Suppliers' },
           ].map(tab => (
             <TabsTrigger
               key={tab.value}
@@ -449,7 +549,7 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
               <p className="text-xs text-muted-foreground">{filtPos.filter(i => i.payment_method === 'evc').length} sales</p>
             </div>
             <div className="bg-white rounded-xl border p-4 text-center">
-              <p className="text-xs text-muted-foreground mb-1">POS via Cash</p>
+              <p className="text-xs text-muted-foreground mb-1">POS via Mobile Money</p>
               <p className="text-xl font-bold text-gray-700">{formatCurrency(posCash, currency)}</p>
               <p className="text-xs text-muted-foreground">{filtPos.filter(i => i.payment_method === 'cash' || !i.payment_method).length} sales</p>
             </div>
@@ -551,7 +651,7 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'EVC Plus', value: posEvc, count: filtPos.filter(i => i.payment_method === 'evc').length, color: 'bg-amber-500', text: 'text-amber-600' },
-              { label: 'Cash', value: posCash, count: filtPos.filter(i => i.payment_method === 'cash' || !i.payment_method).length, color: 'bg-gray-500', text: 'text-gray-700' },
+              { label: 'Mobile Money', value: posCash, count: filtPos.filter(i => i.payment_method === 'cash' || !i.payment_method).length, color: 'bg-gray-500', text: 'text-gray-700' },
               { label: 'Credit', value: posCredit, count: filtPos.filter(i => i.payment_method === 'credit').length, color: 'bg-purple-500', text: 'text-purple-600' },
             ].map(m => (
               <div key={m.label} className="bg-white rounded-xl border p-4">
@@ -859,6 +959,247 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
             )}
           </div>
         </TabsContent>
+        {/* ── P&L ── */}
+        <TabsContent value="pl" className="space-y-4">
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <div className="px-5 py-4 border-b bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Profit &amp; Loss Statement</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Based on recorded sales and expenses</p>
+            </div>
+            <div className="divide-y text-sm">
+              {/* Revenue */}
+              <div className="px-5 py-3 bg-green-50/40">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Revenue</p>
+                {[
+                  { label: 'POS — EVC', value: posEvc },
+                  { label: 'POS — Mobile Money', value: posCash },
+                  { label: 'POS — Credit', value: posCredit },
+                  { label: 'B2B Invoices', value: totalIncome - posTotal },
+                ].map(row => (
+                  <div key={row.label} className="flex justify-between py-0.5">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="font-medium">{formatCurrency(row.value, currency)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between px-5 py-3 font-semibold bg-green-50">
+                <span>Total Revenue</span>
+                <span className="text-green-700">{formatCurrency(totalIncome, currency)}</span>
+              </div>
+
+              {/* COGS */}
+              <div className="px-5 py-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cost of Goods Sold</p>
+                <div className="flex justify-between py-0.5">
+                  <span className="text-muted-foreground">Inventory cost of POS items sold</span>
+                  <span className="font-medium text-red-600">({formatCurrency(totalCOGS, currency)})</span>
+                </div>
+              </div>
+              <div className="flex justify-between px-5 py-3 font-semibold bg-blue-50">
+                <div>
+                  <span>Gross Profit</span>
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{grossMarginPct.toFixed(1)}% margin</span>
+                </div>
+                <span className={grossProfit >= 0 ? 'text-[#0F4C81]' : 'text-red-600'}>{formatCurrency(grossProfit, currency)}</span>
+              </div>
+
+              {/* Operating expenses */}
+              <div className="px-5 py-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Operating Expenses</p>
+                <div className="flex justify-between py-0.5">
+                  <span className="text-muted-foreground">Purchases, bills &amp; expenses</span>
+                  <span className="font-medium text-red-600">({formatCurrency(totalExpense, currency)})</span>
+                </div>
+              </div>
+
+              {/* Net profit */}
+              <div className={`flex justify-between px-5 py-4 font-bold text-base ${netProfit2 >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                <div>
+                  <span>Net {netProfit2 >= 0 ? 'Profit' : 'Loss'}</span>
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{netMarginPct.toFixed(1)}% margin</span>
+                </div>
+                <span className={netProfit2 >= 0 ? 'text-green-700' : 'text-red-700'}>{formatCurrency(Math.abs(netProfit2), currency)}</span>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── PRODUCTS ── */}
+        <TabsContent value="products" className="space-y-4">
+          <div className="bg-white rounded-xl border overflow-hidden">
+            <div className="px-5 py-4 border-b bg-gray-50 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900">Top Selling Products</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{topProducts.length} products sold in this period</p>
+              </div>
+            </div>
+            {topProducts.length === 0 ? (
+              <p className="text-center py-10 text-sm text-muted-foreground">No POS sales in this period</p>
+            ) : (
+              <div className="divide-y">
+                {topProducts.map((p, i) => {
+                  const maxRevenue = topProducts[0]?.revenue ?? 1
+                  return (
+                    <div key={i} className="px-5 py-3">
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs font-bold text-muted-foreground w-5 shrink-0">#{i + 1}</span>
+                          <p className="font-medium text-sm truncate">{p.name}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-sm text-[#0F4C81]">{formatCurrency(p.revenue, currency)}</p>
+                          <p className="text-xs text-muted-foreground">{p.qty % 1 === 0 ? p.qty : p.qty.toFixed(1)} units</p>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full">
+                        <div className="h-full bg-[#0F4C81] rounded-full" style={{ width: `${(p.revenue / maxRevenue) * 100}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── TIMING ── */}
+        <TabsContent value="timing" className="space-y-4">
+          {/* Best hours */}
+          <div className="bg-white rounded-xl border p-5">
+            <h3 className="font-semibold text-gray-900 mb-1">Best Hours of the Day</h3>
+            <p className="text-xs text-muted-foreground mb-4">POS sales revenue by hour</p>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={hourData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 9 }} tickLine={false} axisLine={false}
+                  interval={1} angle={-45} textAnchor="end" height={40} />
+                <YAxis hide />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+                    const d = payload[0]
+                    return (
+                      <div className="bg-white border rounded-lg shadow-lg px-3 py-2 text-xs">
+                        <p className="font-semibold mb-1">{label}</p>
+                        <p>{formatCurrency(Number(d.value), currency)}</p>
+                        <p className="text-muted-foreground">{hourData.find(h => h.label === label)?.count ?? 0} sales</p>
+                      </div>
+                    )
+                  }}
+                />
+                <Bar dataKey="revenue" fill="#0F4C81" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Best days */}
+          <div className="bg-white rounded-xl border p-5">
+            <h3 className="font-semibold text-gray-900 mb-1">Best Days of the Week</h3>
+            <p className="text-xs text-muted-foreground mb-4">POS sales revenue by day</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={dayData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis hide />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+                    const d = payload[0]
+                    return (
+                      <div className="bg-white border rounded-lg shadow-lg px-3 py-2 text-xs">
+                        <p className="font-semibold mb-1">{label}</p>
+                        <p>{formatCurrency(Number(d.value), currency)}</p>
+                        <p className="text-muted-foreground">{dayData.find(x => x.day === label)?.count ?? 0} sales</p>
+                      </div>
+                    )
+                  }}
+                />
+                <Bar dataKey="revenue" fill="#27AE60" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            {/* Day ranking */}
+            <div className="mt-4 grid grid-cols-7 gap-1 text-center">
+              {[...dayData].sort((a, b) => b.revenue - a.revenue).slice(0, 3).map((d, i) => (
+                <div key={d.day} className="col-span-7 sm:col-span-auto" style={{ display: 'none' }}>
+                  {d.day}
+                </div>
+              ))}
+              <div className="col-span-7 flex gap-2 flex-wrap mt-1">
+                {[...dayData].sort((a, b) => b.revenue - a.revenue).map((d, i) => (
+                  <span key={d.day} className="text-xs text-muted-foreground">
+                    {i === 0 && <span className="font-semibold text-[#0F4C81]">{d.day} (best)</span>}
+                    {i === dayData.length - 1 && i !== 0 && <span className="text-muted-foreground">{d.day} (slowest)</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── SUPPLIERS ── */}
+        <TabsContent value="suppliers" className="space-y-4">
+          {/* Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Owed</p>
+              <p className={`text-xl font-bold ${totalVendorOwed > 0 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                {formatCurrency(totalVendorOwed, currency)}
+              </p>
+              <p className="text-xs text-muted-foreground">{unpaidRestocks.length} unpaid restock{unpaidRestocks.length !== 1 ? 's' : ''}</p>
+            </div>
+            <div className="bg-white rounded-xl border p-4">
+              <p className="text-xs text-muted-foreground mb-1">Overdue</p>
+              <p className={`text-xl font-bold ${overdueRestocks.length > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                {formatCurrency(overdueRestocks.reduce((s, r) => s + r.total_cost, 0), currency)}
+              </p>
+              <p className="text-xs text-muted-foreground">{overdueRestocks.length} overdue</p>
+            </div>
+            <div className="bg-white rounded-xl border p-4">
+              <p className="text-xs text-muted-foreground mb-1">Suppliers with Balance</p>
+              <p className="text-xl font-bold">{vendorGroups.length}</p>
+            </div>
+          </div>
+
+          {vendorGroups.length === 0 ? (
+            <div className="bg-white rounded-xl border p-10 text-center text-sm text-muted-foreground">
+              <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500 opacity-60" />
+              All supplier payments are up to date
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {vendorGroups.map(vg => (
+                <div key={vg.name} className="bg-white rounded-xl border overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b">
+                    <p className="font-semibold text-sm">{vg.name}</p>
+                    <p className="font-bold text-amber-600">{formatCurrency(vg.owed, currency)}</p>
+                  </div>
+                  <div className="divide-y">
+                    {vg.restocks.map(r => {
+                      const isOverdue = r.due_date && r.due_date < today
+                      return (
+                        <div key={r.id} className={`flex items-center justify-between px-4 py-2.5 text-sm ${isOverdue ? 'bg-red-50/30' : ''}`}>
+                          <div>
+                            <p className="text-sm">{r.product_name ?? '—'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(r.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                              {r.due_date && (
+                                <span className={isOverdue ? ' · text-red-600 font-medium' : ' · '}>
+                                  {isOverdue ? 'overdue' : `due ${new Date(r.due_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <p className="font-semibold">{formatCurrency(r.total_cost, currency)}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
       </Tabs>
     </div>
   )

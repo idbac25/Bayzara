@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Building2, Plus, MoreHorizontal, Pencil, Trash2, Phone, Mail } from 'lucide-react'
+import { Store, Plus, MoreHorizontal, Pencil, Trash2, Phone, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -24,37 +24,32 @@ interface Vendor {
   id: string
   name: string
   contact_name: string | null
-  email: string | null
   phone: string | null
-  address_line1: string | null
+  evc_phone: string | null
   city: string | null
   country: string | null
-  tax_number: string | null
   notes: string | null
   archived: boolean
   created_at: string
 }
 
-interface VendorsClientProps {
+interface Props {
   vendors: Vendor[]
   businessId: string
-  currency: string
   slug: string
 }
 
 const emptyForm = {
   name: '',
   contact_name: '',
-  email: '',
   phone: '',
-  address_line1: '',
+  evc_phone: '',
   city: '',
-  country: '',
-  tax_number: '',
+  country: 'Somalia',
   notes: '',
 }
 
-export function VendorsClient({ vendors: initial, businessId, currency, slug }: VendorsClientProps) {
+export function VendorsClient({ vendors: initial, businessId, slug }: Props) {
   const { business } = useBusiness()
   const [vendors, setVendors] = useState(initial)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -77,19 +72,17 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
     setForm({
       name: v.name,
       contact_name: v.contact_name ?? '',
-      email: v.email ?? '',
       phone: v.phone ?? '',
-      address_line1: v.address_line1 ?? '',
+      evc_phone: v.evc_phone ?? '',
       city: v.city ?? '',
-      country: v.country ?? '',
-      tax_number: v.tax_number ?? '',
+      country: v.country ?? 'Somalia',
       notes: v.notes ?? '',
     })
     setSheetOpen(true)
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error('Vendor name is required'); return }
+    if (!form.name.trim()) { toast.error('Supplier name is required'); return }
     setSaving(true)
     const supabase = createClient()
 
@@ -97,12 +90,10 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
       business_id: businessId,
       name: form.name.trim(),
       contact_name: form.contact_name || null,
-      email: form.email || null,
       phone: form.phone || null,
-      address_line1: form.address_line1 || null,
+      evc_phone: form.evc_phone || null,
       city: form.city || null,
       country: form.country || null,
-      tax_number: form.tax_number || null,
       notes: form.notes || null,
     }
 
@@ -115,7 +106,7 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
         .single()
       if (error) { toast.error(error.message); setSaving(false); return }
       setVendors(prev => prev.map(v => v.id === editing.id ? data : v))
-      toast.success('Vendor updated')
+      toast.success('Supplier updated')
     } else {
       const { data, error } = await supabase
         .from('vendors')
@@ -124,7 +115,7 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
         .single()
       if (error) { toast.error(error.message); setSaving(false); return }
       setVendors(prev => [data, ...prev])
-      toast.success('Vendor added')
+      toast.success('Supplier added')
     }
     setSaving(false)
     setSheetOpen(false)
@@ -141,13 +132,13 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
     setVendors(prev => prev.map(i => i.id === v.id ? { ...i, archived: true } : i))
     setDeleteDialog(null)
     setDeleting(false)
-    toast.success('Vendor archived')
+    toast.success('Supplier archived')
   }
 
   const columns: ColumnDef<Vendor>[] = [
     {
       accessorKey: 'name',
-      header: 'Vendor',
+      header: 'Supplier',
       cell: ({ row }) => (
         <Link href={`/app/${slug}/vendors/${row.original.id}`} className="font-medium text-[#0F4C81] hover:underline">
           {row.original.name}
@@ -163,15 +154,19 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
       accessorKey: 'phone',
       header: 'Phone',
       cell: ({ getValue }) => getValue()
-        ? <a href={`tel:${getValue()}`} className="flex items-center gap-1 text-sm text-[#0F4C81] hover:underline"><Phone className="h-3 w-3" />{String(getValue())}</a>
+        ? <a href={`tel:${getValue()}`} className="flex items-center gap-1 text-sm text-[#0F4C81] hover:underline">
+            <Phone className="h-3 w-3" />{String(getValue())}
+          </a>
         : <span className="text-muted-foreground">—</span>,
     },
     {
-      accessorKey: 'email',
-      header: 'Email',
+      accessorKey: 'evc_phone',
+      header: 'EVC Phone',
       cell: ({ getValue }) => getValue()
-        ? <a href={`mailto:${getValue()}`} className="flex items-center gap-1 text-sm text-[#0F4C81] hover:underline"><Mail className="h-3 w-3" />{String(getValue())}</a>
-        : <span className="text-muted-foreground">—</span>,
+        ? <span className="flex items-center gap-1 text-sm text-blue-600">
+            <Zap className="h-3 w-3" />{String(getValue())}
+          </span>
+        : <span className="text-muted-foreground text-sm">—</span>,
     },
     {
       accessorKey: 'city',
@@ -204,79 +199,107 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
   return (
     <div>
       <PageHeader
-        title="Vendors"
-        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Vendors' }]}
+        title="Suppliers"
+        description="Wholesalers and importers you buy stock from"
+        breadcrumbs={[{ label: business.name, href: `/app/${slug}` }, { label: 'Suppliers' }]}
         action={
           <Button onClick={openNew} className="bg-[#0F4C81] hover:bg-[#0d3f6e]">
-            <Plus className="mr-2 h-4 w-4" />Add Vendor
+            <Plus className="mr-2 h-4 w-4" />Add Supplier
           </Button>
         }
       />
 
       {active.length === 0 ? (
         <EmptyState
-          icon={Building2}
-          title="No vendors yet"
-          description="Add your suppliers and service providers."
-          actionLabel="Add Vendor"
+          icon={Store}
+          title="No suppliers yet"
+          description="Add the wholesalers and importers you buy stock from."
+          actionLabel="Add Supplier"
           onAction={openNew}
         />
       ) : (
-        <DataTable
-          data={active}
-          columns={columns}
-          searchPlaceholder="Search vendors..."
-        />
+        <DataTable data={active} columns={columns} searchPlaceholder="Search suppliers..." />
       )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{editing ? 'Edit Vendor' : 'Add Vendor'}</SheetTitle>
+            <SheetTitle>{editing ? 'Edit Supplier' : 'Add Supplier'}</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 mt-6">
             <div>
-              <Label>Vendor Name *</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Supplier Co." className="mt-1" />
+              <Label>Supplier Name *</Label>
+              <Input
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Mogadishu Wholesale Co."
+                className="mt-1"
+              />
             </div>
             <div>
               <Label>Contact Person</Label>
-              <Input value={form.contact_name} onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} placeholder="John Doe" className="mt-1" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Phone</Label>
-                <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+252..." className="mt-1" />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} type="email" placeholder="vendor@example.com" className="mt-1" />
-              </div>
+              <Input
+                value={form.contact_name}
+                onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
+                placeholder="Ahmed Hassan"
+                className="mt-1"
+              />
             </div>
             <div>
-              <Label>Address</Label>
-              <Input value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} placeholder="Street address" className="mt-1" />
+              <Label>Phone</Label>
+              <Input
+                value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+252…"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-blue-500" />EVC Phone (for payments)
+              </Label>
+              <Input
+                value={form.evc_phone}
+                onChange={e => setForm(f => ({ ...f, evc_phone: e.target.value }))}
+                placeholder="+252…"
+                className="mt-1"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>City</Label>
-                <Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="Mogadishu" className="mt-1" />
+                <Input
+                  value={form.city}
+                  onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                  placeholder="Mogadishu"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Country</Label>
-                <Input value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} placeholder="Somalia" className="mt-1" />
+                <Input
+                  value={form.country}
+                  onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
+                  placeholder="Somalia"
+                  className="mt-1"
+                />
               </div>
             </div>
             <div>
-              <Label>Tax Number</Label>
-              <Input value={form.tax_number} onChange={e => setForm(f => ({ ...f, tax_number: e.target.value }))} placeholder="Optional" className="mt-1" />
-            </div>
-            <div>
               <Label>Notes</Label>
-              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional notes" className="mt-1" />
+              <Input
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="e.g. Pays every Friday, minimum order 50 units…"
+                className="mt-1"
+              />
             </div>
-            <Button onClick={handleSave} disabled={saving} className="w-full bg-[#0F4C81] hover:bg-[#0d3f6e]">
-              {saving ? 'Saving...' : editing ? 'Update Vendor' : 'Add Vendor'}
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full bg-[#0F4C81] hover:bg-[#0d3f6e]"
+            >
+              {saving ? 'Saving…' : editing ? 'Update Supplier' : 'Add Supplier'}
             </Button>
           </div>
         </SheetContent>
@@ -286,7 +309,7 @@ export function VendorsClient({ vendors: initial, businessId, currency, slug }: 
         open={!!deleteDialog}
         onOpenChange={o => !o && setDeleteDialog(null)}
         title={`Archive ${deleteDialog?.name}?`}
-        description="This vendor will be hidden from lists but purchase history is preserved."
+        description="This supplier will be hidden but their restock history is preserved."
         confirmLabel="Archive"
         loading={deleting}
         onConfirm={() => deleteDialog && handleArchive(deleteDialog)}

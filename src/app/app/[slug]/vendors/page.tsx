@@ -25,7 +25,6 @@ export default async function VendorsPage({ params }: Props) {
     <VendorsClient
       vendors={vendors ?? []}
       businessId={business?.id ?? ''}
-      currency={business?.currency ?? 'USD'}
       slug={slug}
     />
   )

@@ -68,7 +68,7 @@ export default async function ReconciliationPage({ params }: Props) {
     <ReconciliationClient
       business={business}
       todayRec={todayRec ?? null}
-      liveTotals={{ cash: liveCash, evc: liveEvc, credit: liveCredit, debtPayments: liveDebtPay, salesCount }}
+      liveTotals={{ cash: liveCash, evc: liveEvc, credit: liveCredit, salesCount }}
       staff={staff ?? []}
       history={history ?? []}
       slug={slug}

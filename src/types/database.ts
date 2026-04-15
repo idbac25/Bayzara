@@ -280,6 +280,25 @@ export interface InventoryItem {
   updated_at: string
 }
 
+export interface StockRestock {
+  id: string
+  business_id: string
+  vendor_id: string | null
+  inventory_item_id: string
+  quantity: number
+  cost_per_unit: number
+  total_cost: number
+  payment_method: 'cash' | 'credit'
+  status: 'paid' | 'unpaid'
+  due_date: string | null
+  date: string
+  notes: string | null
+  paid_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Pipeline {
   id: string
   business_id: string

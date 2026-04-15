@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
   Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, BarChart3, Kanban, X, Monitor,
-  UserRound, BookOpen, UserCog, ClipboardCheck
+  UserRound, BookOpen, UserCog, ClipboardCheck, RefreshCw
 } from 'lucide-react'
 
 interface NavItem {
@@ -45,6 +45,8 @@ function buildShopNav(slug: string, hasEvc: boolean): NavSection[] {
       items: [
         { label: 'Products', href: `${base}/products`, icon: ShoppingBag },
         { label: 'Stock', href: `${base}/inventory`, icon: Package },
+        { label: 'Restock', href: `${base}/restocks`, icon: RefreshCw },
+        { label: 'Suppliers', href: `${base}/vendors`, icon: Store },
       ]
     },
     {
@@ -160,6 +162,8 @@ function buildAllNav(slug: string, hasEvc: boolean, hasPos: boolean): NavSection
       items: [
         ...(hasPos ? [{ label: 'Products', href: `${base}/products`, icon: ShoppingBag }] : []),
         { label: 'Items', href: `${base}/inventory`, icon: Package },
+        ...(hasPos ? [{ label: 'Restock', href: `${base}/restocks`, icon: RefreshCw }] : []),
+        ...(hasPos ? [{ label: 'Suppliers', href: `${base}/vendors`, icon: Store }] : []),
       ]
     },
     {
