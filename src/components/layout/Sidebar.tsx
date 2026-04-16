@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
   Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, BarChart3, Kanban, X, Monitor,
-  UserRound, BookOpen, UserCog, ClipboardCheck, RefreshCw, Upload
+  UserRound, BookOpen, UserCog, ClipboardCheck, RefreshCw, Upload, Smartphone
 } from 'lucide-react'
 import type { Translations } from '@/lib/i18n'
 
@@ -56,6 +56,7 @@ function buildShopNav(slug: string, hasEvc: boolean, t: Translations): NavSectio
       items: [
         { label: t.nav.reconciliation, href: `${base}/reconciliation`, icon: ClipboardCheck },
         { label: t.nav.staff, href: `${base}/staff`, icon: UserCog },
+        { label: t.nav.smsRecorder, href: `${base}/sms`, icon: Smartphone },
       ]
     },
     {
@@ -177,6 +178,7 @@ function buildAllNav(slug: string, hasEvc: boolean, hasPos: boolean, t: Translat
       items: [
         ...(hasPos ? [{ label: t.nav.reconciliation, href: `${base}/reconciliation`, icon: ClipboardCheck }] : []),
         { label: t.nav.staff, href: `${base}/staff`, icon: UserCog },
+        { label: t.nav.smsRecorder, href: `${base}/sms`, icon: Smartphone },
       ]
     },
     {

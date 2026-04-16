@@ -33,6 +33,7 @@ export const en = {
     evcPlus:          'EVC Plus',
     settings:         'Settings',
     import:           'Import Data',
+    smsRecorder:      'SMS Recorder',
   },
 
   common: {

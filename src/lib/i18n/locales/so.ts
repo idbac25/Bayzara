@@ -35,6 +35,7 @@ export const so: Translations = {
     evcPlus:          'EVC Plus',
     settings:         'Goobta',
     import:           'Keenid Xogta',
+    smsRecorder:      'Diiwaan SMS',
   },
 
   common: {
