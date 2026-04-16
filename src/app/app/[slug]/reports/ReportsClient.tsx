@@ -87,6 +87,13 @@ interface VendorRestock {
   product_name: string | null
 }
 
+interface VendorOpeningBalance {
+  id: string
+  name: string
+  opening_balance: number
+  opening_balance_date: string | null
+}
+
 interface Props {
   slug: string
   currency: string
@@ -97,6 +104,7 @@ interface Props {
   openInvoices: OpenInvoice[]
   posLineItems: PosLineItem[]
   vendorRestocks: VendorRestock[]
+  vendorOpeningBalances?: VendorOpeningBalance[]
 }
 
 // ── Period helpers ────────────────────────────────────────────────────────────
@@ -266,7 +274,7 @@ const PERIOD_OPTIONS: { key: Period; label: string }[] = [
   { key: 'custom',label: 'Custom' },
 ]
 
-export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, openInvoices, posLineItems, vendorRestocks }: Props) {
+export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, openInvoices, posLineItems, vendorRestocks, vendorOpeningBalances = [] }: Props) {
   const { business } = useBusiness()
 
   const [period, setPeriod]       = useState<Period>('month')
@@ -371,18 +379,24 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
   // ── Vendor payables ───────────────────────────────────────────────────────
   const today = new Date().toISOString().split('T')[0]
   const unpaidRestocks = vendorRestocks.filter(r => r.status === 'unpaid')
-  const totalVendorOwed = unpaidRestocks.reduce((s, r) => s + r.total_cost, 0)
+  const totalOpeningBalance = vendorOpeningBalances.reduce((s, v) => s + v.opening_balance, 0)
+  const totalVendorOwed = unpaidRestocks.reduce((s, r) => s + r.total_cost, 0) + totalOpeningBalance
   const overdueRestocks = unpaidRestocks.filter(r => r.due_date && r.due_date < today)
 
   const vendorGroups = useMemo(() => {
-    const map = new Map<string, { name: string; owed: number; restocks: VendorRestock[] }>()
+    const map = new Map<string, { name: string; owed: number; opening: number; restocks: VendorRestock[] }>()
     unpaidRestocks.forEach(r => {
       const key = r.vendor_name ?? 'Unknown Supplier'
-      const existing = map.get(key) ?? { name: key, owed: 0, restocks: [] }
+      const existing = map.get(key) ?? { name: key, owed: 0, opening: 0, restocks: [] }
       map.set(key, { ...existing, owed: existing.owed + r.total_cost, restocks: [...existing.restocks, r] })
     })
+    vendorOpeningBalances.forEach(v => {
+      const key = v.name
+      const existing = map.get(key) ?? { name: key, owed: 0, opening: 0, restocks: [] }
+      map.set(key, { ...existing, owed: existing.owed + v.opening_balance, opening: v.opening_balance })
+    })
     return Array.from(map.values()).sort((a, b) => b.owed - a.owed)
-  }, [unpaidRestocks])
+  }, [unpaidRestocks, vendorOpeningBalances])
 
   // Chart data
   const chartItems = useMemo(() => {
@@ -1174,6 +1188,15 @@ export function ReportsClient({ slug, currency, invoices, expenses, evcTxns, ope
                     <p className="font-bold text-amber-600">{formatCurrency(vg.owed, currency)}</p>
                   </div>
                   <div className="divide-y">
+                    {vg.opening > 0 && (
+                      <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-amber-50/40">
+                        <div>
+                          <p className="text-sm">Imported opening balance</p>
+                          <p className="text-xs text-muted-foreground">migrated debt</p>
+                        </div>
+                        <p className="font-semibold">{formatCurrency(vg.opening, currency)}</p>
+                      </div>
+                    )}
                     {vg.restocks.map(r => {
                       const isOverdue = r.due_date && r.due_date < today
                       return (

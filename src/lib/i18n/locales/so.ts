@@ -34,6 +34,7 @@ export const so: Translations = {
     bankAndPayments:  'Bangiga & Lacag Bixinta',
     evcPlus:          'EVC Plus',
     settings:         'Goobta',
+    import:           'Keenid Xogta',
   },
 
   common: {

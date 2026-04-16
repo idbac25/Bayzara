@@ -32,6 +32,7 @@ export const en = {
     bankAndPayments:  'Bank & Payments',
     evcPlus:          'EVC Plus',
     settings:         'Settings',
+    import:           'Import Data',
   },
 
   common: {

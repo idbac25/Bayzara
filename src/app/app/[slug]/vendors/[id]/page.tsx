@@ -18,7 +18,7 @@ export default async function VendorDetailPage({ params }: Props) {
 
   const { data: vendor } = await supabase
     .from('vendors')
-    .select('id, name, contact_name, phone, evc_phone, city, country, notes')
+    .select('id, name, contact_name, phone, evc_phone, city, country, notes, opening_balance, opening_balance_date, opening_balance_notes')
     .eq('id', id)
     .eq('business_id', business?.id)
     .single()
@@ -43,7 +43,8 @@ export default async function VendorDetailPage({ params }: Props) {
   }))
 
   const totalRestocked = normalised.reduce((s, r) => s + (r.total_cost ?? 0), 0)
-  const totalOwed = normalised
+  const opening = Number(vendor.opening_balance ?? 0)
+  const totalOwed = opening + normalised
     .filter(r => r.status === 'unpaid')
     .reduce((s, r) => s + (r.total_cost ?? 0), 0)
 

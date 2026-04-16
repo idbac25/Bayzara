@@ -34,6 +34,7 @@ export default async function ReportsPage({ params }: Props) {
     { data: openInvoices },
     { data: posLineItems },
     { data: vendorRestocks },
+    { data: vendorBalances },
   ] = await Promise.all([
     // All invoices (B2B + POS) — include created_at for hour-of-day analysis
     supabase
@@ -95,6 +96,13 @@ export default async function ReportsPage({ params }: Props) {
       `)
       .eq('business_id', business.id)
       .order('due_date', { ascending: true }),
+
+    // Imported vendor opening balances (migrated debts)
+    supabase
+      .from('vendors')
+      .select('id, name, opening_balance, opening_balance_date')
+      .eq('business_id', business.id)
+      .gt('opening_balance', 0),
   ])
 
   return (
@@ -125,6 +133,12 @@ export default async function ReportsPage({ params }: Props) {
         payment_method: r.payment_method,
         vendor_name: Array.isArray(r.vendors) ? (r.vendors[0]?.name ?? null) : (r.vendors as { name: string } | null)?.name ?? null,
         product_name: Array.isArray(r.inventory_items) ? (r.inventory_items[0]?.name ?? null) : (r.inventory_items as { name: string } | null)?.name ?? null,
+      }))}
+      vendorOpeningBalances={(vendorBalances ?? []).map(v => ({
+        id: v.id,
+        name: v.name,
+        opening_balance: Number(v.opening_balance ?? 0),
+        opening_balance_date: v.opening_balance_date,
       }))}
     />
   )

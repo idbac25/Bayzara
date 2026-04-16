@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, FileText, Receipt, ShoppingCart,
   Store, Package, PieChart, Wallet, Zap, Settings, ShoppingBag,
   ChevronLeft, ChevronRight, BarChart3, Kanban, X, Monitor,
-  UserRound, BookOpen, UserCog, ClipboardCheck, RefreshCw
+  UserRound, BookOpen, UserCog, ClipboardCheck, RefreshCw, Upload
 } from 'lucide-react'
 import type { Translations } from '@/lib/i18n'
 
@@ -61,12 +61,15 @@ function buildShopNav(slug: string, hasEvc: boolean, t: Translations): NavSectio
     {
       title: t.nav.finance,
       items: [
+        { label: t.nav.reports, href: `${base}/reports`, icon: PieChart },
+        { label: t.nav.bankAndPayments, href: `${base}/bank-accounts`, icon: Wallet },
         { label: t.nav.evcPlus, href: `${base}/evc`, icon: Zap, badge: hasEvc ? 'live' : undefined },
       ]
     },
     {
       title: t.nav.settings_section,
       items: [
+        { label: t.nav.import, href: `${base}/import`, icon: Upload },
         { label: t.nav.settings, href: `${base}/settings`, icon: Settings },
       ]
     },
@@ -120,6 +123,7 @@ function buildB2BNav(slug: string, hasEvc: boolean, t: Translations): NavSection
     {
       title: t.nav.settings_section,
       items: [
+        { label: t.nav.import, href: `${base}/import`, icon: Upload },
         { label: t.nav.settings, href: `${base}/settings`, icon: Settings },
       ]
     },
@@ -186,6 +190,7 @@ function buildAllNav(slug: string, hasEvc: boolean, hasPos: boolean, t: Translat
     {
       title: t.nav.settings_section,
       items: [
+        { label: t.nav.import, href: `${base}/import`, icon: Upload },
         { label: t.nav.settings, href: `${base}/settings`, icon: Settings },
       ]
     },
