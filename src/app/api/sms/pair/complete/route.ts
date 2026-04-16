@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   const { data: device } = await supabase
     .from('sms_listener_devices')
-    .select('id, business_id, device_token, pairing_code_expires_at, paired_at')
+    .select('id, business_id, device_token, pairing_code_expires_at, paired_at, businesses(name)')
     .eq('pairing_code', code)
     .is('paired_at', null)
     .maybeSingle()
@@ -33,6 +33,10 @@ export async function POST(req: NextRequest) {
   if (!device.pairing_code_expires_at || new Date(device.pairing_code_expires_at) < new Date()) {
     return NextResponse.json({ error: 'Pairing code expired' }, { status: 410 })
   }
+
+  const businessName = Array.isArray(device.businesses)
+    ? (device.businesses[0]?.name ?? null)
+    : (device.businesses as { name: string } | null)?.name ?? null
 
   const now = new Date().toISOString()
   const { error: updateErr } = await supabase
@@ -54,6 +58,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     device_id: device.id,
     business_id: device.business_id,
+    business_name: businessName,
     device_token: device.device_token,
   })
 }
