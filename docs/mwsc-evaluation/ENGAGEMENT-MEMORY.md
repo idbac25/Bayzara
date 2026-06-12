@@ -211,6 +211,39 @@ A structurally perfect borehole is worth little if water turns brackish or the t
 
 ---
 
+## 6b. DELIVERED: Borehole & Well Evaluation Reference (2026-06-12)
+
+A standalone authoritative **audit reference** ("playbook") for evaluating boreholes/wells —
+written for both a non-technical reviewer and technical evaluators. Purpose lens: the user is
+**auditing the evaluators** (and has no instruments), so it states what a competent evaluation
+must measure, by which method, to which named standard, how it is scored, AND the valid
+low-/no-cost substitutes when equipment is missing.
+
+- Files: `docs/mwsc-evaluation/pdf/Borehole-Well-Evaluation-Reference_Kayd-Solutions.pdf`
+  (branded) and `...Reference.pdf` (unbranded); Markdown source
+  `docs/mwsc-evaluation/borehole-well-evaluation-reference.md`; generator
+  `docs/mwsc-evaluation/build/generate.js` (single content model → both PDFs + MD via pdfmake;
+  rebuild: `npm i pdfmake@0.3.11 && node generate.js ..`). 17 pages.
+- Contents: how-to-use; plain-language primer; 4 dimensions (Structural / Yield / Quality /
+  Sustainability & saltwater intrusion) each with terms, gold-standard method, no-equipment
+  fallback, governing standard, "good" thresholds, audit checklist, scoring; a ready-to-use
+  scoring rubric (BCSI 0–100 + A–E grade + weakest-link RUL ceiling) with a worked example;
+  the value bridge (RUL/capacity/OPEX → DRC & income approach); auditor red-flags; glossary;
+  verified references.
+- **All standards/formulas were verified by two sub-agents before release.** Verified
+  citations to lock in: ISO 14686:2003 (full title; revision ISO/DIS 14686 pending);
+  ISO 5667-11:2009; **ISO 5667-3:2024** (not 2018); WHO GDWQ 4th ed.+1st&2nd addenda (2022);
+  ANSI/AWWA A100-20; **AWWA M21 5th ed. 2025 "Groundwater Operations"**; SANS 10299 series,
+  **SANS 10299-4:2003** Test-pumping; DWAF/DWS SA Water Quality Guidelines Vol.1 (1996);
+  **Kenya WRA Code of Practice for Test Pumping — DRAFT status, verify final adoption**;
+  US EPA Environmental Geophysics; USGS GWPD 4; **Misstear, Banks & Clark, *Water Wells and
+  Boreholes*, Wiley 2017 — NOT a BGS publication**; Kruseman & de Ridder (ILRI 47); Healy &
+  Cook (2002). Formulas confirmed: specific capacity, Jacob step-drawdown/efficiency, Theis,
+  Cooper-Jacob, Theis recovery, Ghyben-Herzberg (~40:1), WTF recharge, TDS≈0.64×EC
+  (~0.75 for seawater-intruded).
+- Tooling note: no Chrome/pandoc/weasyprint/LibreOffice-working in env → PDFs built with
+  **pdfmake** (pure JS, standard-14 fonts, no browser).
+
 ## 7. Next workstreams (queued)
 
 1. **Reservoirs / storage tanks** — concrete tanks and steel/metal tanks. *User will provide
