@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MWSC — What Are You Worth? | Valuation Briefing</title>
+<style>
+  :root{
+    --navy:#0a2540; --navy2:#0d2e4f; --blue:#1d9bf0; --aqua:#27c5d6;
+    --gold:#f2b134; --ink:#0a2540; --paper:#f4f8fb; --muted:#7892a6;
+    --good:#19b894; --bad:#e5564e; --line:rgba(255,255,255,.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif;
+    background:#05182b;color:#eaf3fb;overflow:hidden;
+  }
+  .deck{height:100vh;width:100vw;position:relative}
+  .slide{
+    position:absolute;inset:0;display:none;flex-direction:column;
+    padding:6vh 7vw;background:
+      radial-gradient(1200px 700px at 85% -10%,rgba(39,197,214,.10),transparent 60%),
+      radial-gradient(900px 600px at 0% 110%,rgba(242,177,52,.08),transparent 55%),
+      linear-gradient(160deg,var(--navy) 0%,#06223c 60%,#041829 100%);
+  }
+  .slide.active{display:flex;animation:fade .5s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .kicker{display:inline-flex;align-items:center;gap:.55rem;font-size:.82rem;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--aqua);font-weight:700;margin-bottom:1.1rem}
+  .kicker::before{content:"";width:26px;height:2px;background:var(--gold);display:inline-block}
+  h1{font-size:clamp(2.2rem,5vw,4.2rem);line-height:1.02;font-weight:800;letter-spacing:-.02em}
+  h2{font-size:clamp(1.7rem,3.4vw,2.9rem);line-height:1.08;font-weight:800;letter-spacing:-.015em;margin-bottom:.4rem}
+  h3{font-size:clamp(1.05rem,1.8vw,1.5rem);font-weight:700;color:#cfe6f6}
+  p,li{font-size:clamp(1rem,1.5vw,1.35rem);line-height:1.5;color:#c4dcef}
+  .lede{font-size:clamp(1.15rem,1.9vw,1.6rem);color:#dcecfb;max-width:60ch}
+  .sub{color:var(--muted);font-weight:600}
+  strong{color:#fff}
+  .gold{color:var(--gold)} .aqua{color:var(--aqua)} .good{color:var(--good)} .bad{color:#ff8c84}
+  .spacer{flex:1}
+  .grid{display:grid;gap:1.1rem;margin-top:1.4rem}
+  .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+  .card{background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:16px;
+    padding:1.3rem 1.4rem;backdrop-filter:blur(4px)}
+  .card .big{font-size:clamp(1.8rem,3.4vw,2.9rem);font-weight:800;color:#fff;line-height:1}
+  .card .lbl{font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--aqua);font-weight:700;margin-bottom:.5rem}
+  .card .note{font-size:.95rem;color:#a9c4da;margin-top:.5rem}
+  ul{list-style:none;margin-top:1rem;display:flex;flex-direction:column;gap:.7rem}
+  ul li{position:relative;padding-left:1.7rem}
+  ul li::before{content:"";position:absolute;left:0;top:.55em;width:9px;height:9px;border-radius:50%;
+    background:var(--gold);box-shadow:0 0 0 4px rgba(242,177,52,.18)}
+  .flow{display:flex;align-items:stretch;gap:.6rem;margin-top:1.6rem;flex-wrap:wrap}
+  .step{flex:1;min-width:130px;background:rgba(255,255,255,.05);border:1px solid var(--line);
+    border-radius:14px;padding:1rem;text-align:center}
+  .step .n{font-size:.72rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+  .step .t{font-weight:700;color:#fff;margin-top:.3rem;font-size:1.02rem}
+  .arrow{align-self:center;color:var(--gold);font-size:1.6rem;font-weight:800}
+  .tag{display:inline-block;background:rgba(39,197,214,.14);color:var(--aqua);border:1px solid rgba(39,197,214,.3);
+    padding:.25rem .7rem;border-radius:999px;font-size:.8rem;font-weight:700;letter-spacing:.04em}
+  .footer{position:absolute;left:7vw;right:7vw;bottom:3vh;display:flex;justify-content:space-between;
+    align-items:center;font-size:.78rem;color:var(--muted);border-top:1px solid var(--line);padding-top:.8rem}
+  .src{font-size:.74rem;color:#6f8aa0;margin-top:1rem;font-style:italic}
+  /* cover */
+  .cover h1{max-width:18ch}
+  .cover .thesis{margin-top:1.6rem;font-size:clamp(1.2rem,2vw,1.7rem);color:var(--gold);font-weight:700;max-width:48ch}
+  .badge-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:2rem}
+  /* iceberg */
+  .berg{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:1.4rem;align-items:center}
+  .berg .vis{position:relative;height:46vh;border-radius:18px;overflow:hidden;border:1px solid var(--line);
+    background:linear-gradient(180deg,#0b3a5e 0%,#0b3a5e 32%,#0a2138 32%,#06182b 100%)}
+  .berg .water-line{position:absolute;left:0;right:0;top:32%;border-top:2px dashed var(--aqua);opacity:.6}
+  .berg .tip{position:absolute;top:6%;left:50%;transform:translateX(-50%);text-align:center}
+  .berg .mass{position:absolute;top:40%;left:50%;transform:translateX(-50%);text-align:center;width:80%}
+  .berg .tip .big,.berg .mass .big{font-weight:800;color:#fff;font-size:1.3rem}
+  .berg .tip .lbl{color:#ff8c84;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.78rem}
+  .berg .mass .lbl{color:var(--good);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:.78rem}
+  .nav{position:fixed;right:18px;bottom:14px;display:flex;gap:8px;z-index:20}
+  .nav button{background:rgba(255,255,255,.08);border:1px solid var(--line);color:#eaf3fb;
+    width:42px;height:42px;border-radius:10px;font-size:1.1rem;cursor:pointer}
+  .nav button:hover{background:rgba(39,197,214,.25)}
+  .count{position:fixed;left:18px;bottom:18px;font-size:.8rem;color:var(--muted);z-index:20;letter-spacing:.1em}
+  .bar{position:fixed;left:0;top:0;height:3px;background:linear-gradient(90deg,var(--aqua),var(--gold));z-index:20;transition:width .3s}
+  .part-pill{position:fixed;top:16px;right:18px;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);z-index:20}
+  @media print{
+    body{overflow:visible}
+    .slide{display:flex !important;position:relative;height:100vh;page-break-after:always}
+    .nav,.count,.bar,.part-pill{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+<div class="part-pill" id="partpill"></div>
+<div class="deck" id="deck">
+
+  <!-- 1 COVER -->
+  <section class="slide active cover">
+    <div class="kicker">Confidential board briefing &middot; 2026</div>
+    <h1>What is Mogadishu Water Supply Company <span class="gold">worth?</span></h1>
+    <p class="thesis">Before you merge with Banadir Water, there is one question that decides everything &mdash; and right now, only the other side has an answer.</p>
+    <div class="badge-row">
+      <span class="tag">Part 1 &middot; How the world values water companies</span>
+      <span class="tag">Part 2 &middot; What you are sitting on</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="footer"><span>Prepared for MWSC management</span><span>An independent valuation briefing</span></div>
+  </section>
+
+  <!-- 2 THE QUESTION -->
+  <section class="slide">
+    <div class="kicker">The decision in front of you</div>
+    <h2>A merger is not a friendship. It is a <span class="gold">price.</span></h2>
+    <p class="lede">Banadir Water wants to bring MWSC into one company. The handshake is easy. The only thing that matters is the number behind it: <strong>how much of the combined company &mdash; or how much money &mdash; do you receive for what you bring?</strong></p>
+    <div class="grid g3">
+      <div class="card"><div class="lbl">Today</div><div class="big">Their number</div><div class="note">Banadir will arrive with a value for you, calculated by their people, on their terms.</div></div>
+      <div class="card"><div class="lbl">The risk</div><div class="big bad">No number</div><div class="note">If you cannot prove your own value, you must simply accept &mdash; or reject &mdash; theirs, blind.</div></div>
+      <div class="card"><div class="lbl">What we will show</div><div class="big good">Your number</div><div class="note">The whole world has a method for this. So can you.</div></div>
+    </div>
+    <div class="src">This briefing is built on documented global transactions and MWSC's own World Bank project record.</div>
+  </section>
+
+  <!-- 3 GLOBAL MARKET -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; This is a real, global market</div>
+    <h2>Water companies change hands <span class="gold">every week.</span></h2>
+    <p class="lede">Buying and selling water utilities is a worldwide business with established rules. It is not improvised &mdash; and it never happens without a valuation.</p>
+    <div class="grid g4">
+      <div class="card"><div class="lbl">Deals / year</div><div class="big">300&ndash;500</div><div class="note">Water-utility transactions announced globally, every year.</div></div>
+      <div class="card"><div class="lbl">Value / year</div><div class="big">$20&ndash;35bn</div><div class="note">Changing hands annually &mdash; up to <span class="gold">$80bn</span> in the 2021 peak.</div></div>
+      <div class="card"><div class="lbl">Record 2021</div><div class="big">498</div><div class="note">Deals in a single year; 13 of them above $1 billion each.</div></div>
+      <div class="card"><div class="lbl">The buyers</div><div class="big">Funds</div><div class="note">Pension &amp; infrastructure funds (Brookfield, KKR, CPP) who never buy without an independent valuation.</div></div>
+    </div>
+    <div class="src">Source: Bluefield Research water-sector M&amp;A deal tracking, 2015&ndash;2024.</div>
+  </section>
+
+  <!-- 4 EUROPE -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; Europe</div>
+    <h2>The price is the asset value <span class="gold">+ a premium.</span></h2>
+    <p class="lede">In the UK, every water company has a measured <strong>asset base</strong>. Buyers then bid a <strong>premium on top</strong> &mdash; and boards that know their value refuse low offers.</p>
+    <div class="grid g3">
+      <div class="card"><div class="lbl">Bristol Water (2021)</div><div class="big good">+44%</div><div class="note">Sold for 44% <em>above</em> its regulated asset value. &pound;425m.</div></div>
+      <div class="card"><div class="lbl">Northumbrian Water</div><div class="big good">+30&ndash;47%</div><div class="note">Premium over asset value. &pound;2.4bn deal.</div></div>
+      <div class="card"><div class="lbl">Severn Trent</div><div class="big bad">&ldquo;No&rdquo;</div><div class="note">Board <strong>rejected</strong> a &pound;5.3bn bid (+20%) as too low &mdash; and stayed independent.</div></div>
+    </div>
+    <p style="margin-top:1.3rem"><span class="tag">Lesson</span> &nbsp;The asset value is the floor. The premium is negotiated. Knowing your floor is what lets you say no.</p>
+    <div class="src">Sources: Pennon RNS 2021; Bloomberg/CKI 2011; Severn Trent / LongRiver 2013.</div>
+  </section>
+
+  <!-- 5 NORTH AMERICA -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; North America</div>
+    <h2>Independent appraisal is <span class="gold">the law.</span></h2>
+    <p class="lede">Many US states <strong>require</strong> that a water system be independently appraised before it is sold &mdash; specifically to protect the seller from being underpaid.</p>
+    <div class="grid g2">
+      <div class="card">
+        <div class="lbl">How the law works</div>
+        <ul style="margin-top:.6rem">
+          <li>Each side hires its <strong>own</strong> independent valuation expert.</li>
+          <li>Every expert must use <strong>three methods</strong>: cost, income, and market.</li>
+          <li>The price is the <strong>average</strong> of the appraisals.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="lbl">What it produces</div>
+        <div class="big">1.7&times;</div>
+        <div class="note">Aquarion Water sold for <strong>$2.4 billion &mdash; 1.7 times its asset base</strong> (2025).</div>
+        <div class="note" style="margin-top:.7rem">US deals run <span class="gold">$6,000&ndash;$11,000 per connection.</span></div>
+      </div>
+    </div>
+    <p style="margin-top:1.2rem"><span class="tag">Lesson</span> &nbsp;Serious markets make independent valuation <strong>mandatory</strong>. The seller always brings their own expert.</p>
+    <div class="src">Sources: Pennsylvania Act 12 / Section 1329; NARUC 2021; Eversource&ndash;Aquarion 2025.</div>
+  </section>
+
+  <!-- 6 SOUTH AMERICA -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; South America</div>
+    <h2>Knowing your value can <span class="gold">double the price.</span></h2>
+    <p class="lede">When Brazil opened its water sector, sellers set a floor price &mdash; then watched buyers bid each other far above it.</p>
+    <div class="grid g3">
+      <div class="card"><div class="lbl">Rio (CEDAE) auction</div><div class="big">R$22.7bn</div><div class="note">Raised in grant payments &mdash; the largest in Brazil's history.</div></div>
+      <div class="card"><div class="lbl">Premium over floor</div><div class="big good">+100&ndash;188%</div><div class="note">Winning bids ran up to <strong>nearly 3&times;</strong> the minimum asking price.</div></div>
+      <div class="card"><div class="lbl">S&atilde;o Paulo (Sabesp)</div><div class="big">~$2.7bn</div><div class="note">Privatized in 2024 &mdash; serves 28 million people.</div></div>
+    </div>
+    <p style="margin-top:1.3rem"><span class="tag">Lesson</span> &nbsp;A prepared seller starts from a defended floor. Competition then pushes the price <strong>up</strong>, not down.</p>
+    <div class="src">Sources: CEDAE auction 2021 (Exame/Aegea); Sabesp privatization 2024 (IFR/Bloomberg).</div>
+  </section>
+
+  <!-- 7 ASIA -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; Asia</div>
+    <h2>Even shared and absorbed companies are <span class="gold">valued and contested.</span></h2>
+    <div class="grid g3">
+      <div class="card"><div class="lbl">Manila Water &middot; Philippines</div><div class="big">6M+ people</div><div class="note">Control changed hands; founding family's final exit valued at <strong>~$252m</strong>.</div></div>
+      <div class="card"><div class="lbl">Maynilad &middot; Philippines</div><div class="big">~$2.6bn</div><div class="note">Implied value at its 2025 share sale (raised ~$580m). Serves 10.5M people.</div></div>
+      <div class="card"><div class="lbl">Air Selangor &middot; Malaysia</div><div class="big">~RM9.65bn</div><div class="note">Paid to <strong>absorb four</strong> separate water operators into one.</div></div>
+    </div>
+    <p style="margin-top:1.3rem"><span class="tag">Lesson</span> &nbsp;When a big operator absorbs smaller ones &mdash; exactly your situation &mdash; each one is <strong>independently valued and negotiated</strong>, not simply handed over.</p>
+    <div class="src">Sources: GMA/BusinessWorld 2024; Maynilad IPO 2025; The Edge Malaysia (Air Selangor consolidation).</div>
+  </section>
+
+  <!-- 8 AFRICA -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; Africa</div>
+    <h2>Two ways this ends &mdash; <span class="bad">lose</span> or <span class="good">keep your value.</span></h2>
+    <div class="grid g2">
+      <div class="card" style="border-color:rgba(229,86,78,.4)">
+        <div class="lbl" style="color:#ff8c84">The losing path</div>
+        <h3>Book-value absorption</h3>
+        <p style="margin-top:.6rem">In Kenya, South Africa &amp; Tanzania, when a big public utility absorbs a small one, assets transfer at <strong>book value</strong> &mdash; <span class="bad">no premium, nothing extra</span> for the smaller partner.</p>
+      </div>
+      <div class="card" style="border-color:rgba(25,184,148,.4)">
+        <div class="lbl" style="color:#3fe0bb">The winning path</div>
+        <h3>Keep the asset, earn from it</h3>
+        <p style="margin-top:.6rem">In Senegal &amp; C&ocirc;te d'Ivoire, the original owner <strong>keeps ownership of the wells and network</strong> and is paid to let others operate &mdash; value retained, not surrendered.</p>
+      </div>
+    </div>
+    <p style="margin-top:1.3rem"><span class="tag">The danger</span> &nbsp;If MWSC lets Banadir frame this as a &ldquo;book-value absorption,&rdquo; you give away the aquifer, the territory, and the future for almost nothing.</p>
+    <div class="src">Sources: WASREB Kenya; SA Water Services Act mergers; Senegal SONES/SEN'EAU; C&ocirc;te d'Ivoire SODECI.</div>
+  </section>
+
+  <!-- 9 NEGOTIATION -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; How the negotiation really goes</div>
+    <h2>The first offer is <span class="gold">never</span> the real price.</h2>
+    <div class="flow">
+      <div class="step"><div class="n">Round 1</div><div class="t">Opening offer</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="step"><div class="n">Your evidence</div><div class="t">Independent valuation says higher</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="step"><div class="n">Round 2</div><div class="t">Reject &middot; improved offer</div></div>
+      <div class="arrow">&rarr;</div>
+      <div class="step"><div class="n">Result</div><div class="t good">+25&ndash;50% or more</div></div>
+    </div>
+    <div class="grid g3" style="margin-top:1.6rem">
+      <div class="card"><div class="lbl">Chester Water (US)</div><div class="big">$320m&rarr;$410m</div><div class="note">Rejected the first offer, won <strong>+28%</strong> &mdash; then still said no and kept the company.</div></div>
+      <div class="card"><div class="lbl">Connecticut Water</div><div class="big good">+10%</div><div class="note">A <strong>second bidder</strong> appeared and pushed the price up.</div></div>
+      <div class="card"><div class="lbl">Severn Trent (UK)</div><div class="big">Walked</div><div class="note">Said no entirely &mdash; because it <strong>knew its own worth.</strong></div></div>
+    </div>
+    <p style="margin-top:1.1rem"><span class="tag">Lesson</span> &nbsp;Rejection is a tool &mdash; but only if you can <strong>prove</strong> a higher number.</p>
+  </section>
+
+  <!-- 10 PART 1 TAKEAWAY -->
+  <section class="slide">
+    <div class="kicker">Part 1 &middot; What the whole world does</div>
+    <h2>Three rules, on <span class="gold">every continent.</span></h2>
+    <div class="grid g3">
+      <div class="card"><div class="big aqua">1</div><h3 style="margin-top:.4rem">Independent valuation first</h3><p style="margin-top:.5rem">No one sells before an independent expert measures the asset &mdash; in many places it is required by law.</p></div>
+      <div class="card"><div class="big aqua">2</div><h3 style="margin-top:.4rem">Several methods, not one</h3><p style="margin-top:.5rem">Cost, income, market, asset base &mdash; never a single convenient number chosen by the buyer.</p></div>
+      <div class="card"><div class="big aqua">3</div><h3 style="margin-top:.4rem">The price is negotiated up</h3><p style="margin-top:.5rem">From a defended floor, the seller who knows their worth gains 25&ndash;50%+.</p></div>
+    </div>
+    <p class="lede" style="margin-top:1.8rem">The seller who does not know their own number <strong class="gold">always loses.</strong></p>
+  </section>
+
+  <!-- 11 YOU ARE NOT A BOREHOLE -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; What you are sitting on</div>
+    <h2>You are not a borehole. You are a <span class="gold">national strategic asset.</span></h2>
+    <p class="lede">MWSC's system was not drilled by a private trader. It was a <strong>state nation-building project</strong>, financed by the world's development banks.</p>
+    <div class="grid g4">
+      <div class="card"><div class="lbl">Built by</div><div class="big">The State</div><div class="note">Somali Government &middot; operated by the Mogadishu Water Agency, reporting to the President.</div></div>
+      <div class="card"><div class="lbl">Financed by</div><div class="big">World Bank</div><div class="note">IDA Credits 822-SO &amp; 1236-SO ($15m), + the Arab Fund + European Development Fund.</div></div>
+      <div class="card"><div class="lbl">Total program</div><div class="big">~$42m</div><div class="note">In <strong>1980s dollars</strong> &mdash; far more in today's money.</div></div>
+      <div class="card"><div class="lbl">Engineered by</div><div class="big">Specialists</div><div class="note">UK Institute of Hydrology designed the wellfields scientifically.</div></div>
+    </div>
+    <div class="src">Source: World Bank Reports 3252-SO (1982) &amp; 8454; WEDC peer-reviewed history (2013).</div>
+  </section>
+
+  <!-- 12 WHAT IT BUILT -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; The system on paper</div>
+    <h2>What that investment <span class="gold">built.</span></h2>
+    <div class="grid g4">
+      <div class="card"><div class="lbl">Design capacity</div><div class="big">48,500</div><div class="note">m&sup3; per day &mdash; engineered production capacity.</div></div>
+      <div class="card"><div class="lbl">Delivered</div><div class="big">12.4m</div><div class="note">m&sup3; of water per year to the city.</div></div>
+      <div class="card"><div class="lbl">Connections</div><div class="big">41,425</div><div class="note">By 1988 &mdash; up from 2,974 in 1973 (~20%/yr growth).</div></div>
+      <div class="card"><div class="lbl">People served</div><div class="big">~510,000</div><div class="note">About <strong>87%</strong> of the city &mdash; at ~74 litres/person/day.</div></div>
+    </div>
+    <p class="lede" style="margin-top:1.7rem">Two engineered wellfields (Balad Road + Afgooye Road), trunk mains, storage reservoirs, and a city distribution network. <strong>This is the thing being valued.</strong></p>
+    <div class="src">Source: World Bank Report 8454; WEDC 2013. Figures are the original public-system design record.</div>
+  </section>
+
+  <!-- 13 THE AQUIFER -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; The crown jewel</div>
+    <h2>You don't own pipes. You own <span class="gold">access to the only good water</span> a city of millions can drink.</h2>
+    <div class="grid g2" style="margin-top:.6rem">
+      <div class="card" style="border-color:rgba(25,184,148,.4)">
+        <div class="lbl" style="color:#3fe0bb">Your wellfields &middot; the Shabelle aquifer</div>
+        <ul style="margin-top:.5rem">
+          <li><strong>Fresh water</strong> &mdash; salinity under 1,000 mg/l, good to drink.</li>
+          <li><strong>High yield</strong> &mdash; 12&ndash;20 litres/second per well.</li>
+          <li>Sited 25&ndash;30 km inland <strong>on purpose</strong>, on the river's fresh aquifer.</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(229,86,78,.4)">
+        <div class="lbl" style="color:#ff8c84">The city's own wells</div>
+        <ul style="margin-top:.5rem">
+          <li><strong>Salty</strong> &mdash; ruined by seawater intrusion near the coast.</li>
+          <li><strong>Weak</strong> &mdash; only 1&ndash;5 litres/second.</li>
+          <li>The reason the whole system was built <strong>away</strong> from the city.</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:1.3rem"><span class="tag">This is the point</span> &nbsp;Anyone can drill a salty borehole in town. <strong>Almost no one</strong> can replace your access to the Shabelle fresh-water aquifer. That scarcity is your real value.</p>
+    <div class="src">Source: British Geological Survey, Hydrogeology of Somalia; Faillace 1986; RVI 2022.</div>
+  </section>
+
+  <!-- 14 ASSET VS OUTPUT -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; The trap</div>
+    <h2>Banadir wants to value you on <span class="bad">output.</span> That is the <span class="bad">smallest</span> number there is.</h2>
+    <div class="berg">
+      <div class="vis">
+        <div class="water-line"></div>
+        <div class="tip"><div class="lbl">Output today</div><div class="big">m&sup3; sold now</div></div>
+        <div class="mass">
+          <div class="lbl">The real asset</div>
+          <div class="big" style="line-height:1.3">Wellfields &middot; aquifer access<br>design capacity &middot; territory<br>replacement cost</div>
+        </div>
+      </div>
+      <div>
+        <h3 class="gold">Why &ldquo;output&rdquo; is a trap</h3>
+        <ul style="margin-top:.7rem">
+          <li>Today's output is <strong>low because of war damage</strong> &mdash; not because the asset is small.</li>
+          <li>It values you at your <strong>weakest moment</strong>, ignoring 48,500 m&sup3;/day of design capacity.</li>
+          <li>It pays <strong>nothing</strong> for the aquifer access, the territory, or what it would cost to rebuild this today.</li>
+        </ul>
+        <p style="margin-top:1rem"><span class="tag">Asset vs Output</span> &nbsp;Output is the tip above the water. The <span class="good">asset</span> is the mountain beneath it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 WHY YOU CAN'T DIY -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; The honest problem</div>
+    <h2>Can anyone in this room answer these <span class="gold">today?</span></h2>
+    <div class="grid g2">
+      <div class="card"><div class="lbl">Question 1</div><h3>What is access to the Shabelle aquifer worth &mdash; $5m or $50m?</h3></div>
+      <div class="card"><div class="lbl">Question 2</div><h3>What would it cost to rebuild the wellfields &amp; mains in 2026 dollars?</h3></div>
+      <div class="card"><div class="lbl">Question 3</div><h3>What is a fair price per m&sup3;, and what premium for the territory?</h3></div>
+      <div class="card"><div class="lbl">Question 4</div><h3>Is Banadir's offer above or below your true floor?</h3></div>
+    </div>
+    <p class="lede" style="margin-top:1.6rem">These need hydrogeology and valuation expertise. <strong>Banadir will bring theirs.</strong> Walking in without your own is like selling your land without knowing it sits on the water everyone needs.</p>
+  </section>
+
+  <!-- 16 THE ASK -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; The recommendation</div>
+    <h2>Appoint your <span class="gold">own</span> independent evaluator &mdash; <span class="gold">before</span> any number is agreed.</h2>
+    <div class="grid g3">
+      <div class="card"><div class="lbl">It is normal</div><div class="big">Worldwide</div><div class="note">Standard practice &mdash; and legally required in many countries &mdash; to protect the seller.</div></div>
+      <div class="card"><div class="lbl">It pays for itself</div><div class="big good">25&ndash;50%+</div><div class="note">The typical gain for a seller who can prove their value. Many times the cost of the evaluation.</div></div>
+      <div class="card"><div class="lbl">It is the only way</div><div class="big">To know</div><div class="note">Whether Banadir's offer is fair &mdash; or a fraction of your worth.</div></div>
+    </div>
+    <p class="lede" style="margin-top:1.7rem">An independent evaluation is not a cost. It is the <strong class="gold">single highest-return decision</strong> you will make in this entire merger.</p>
+  </section>
+
+  <!-- 17 WHAT IT GIVES YOU -->
+  <section class="slide">
+    <div class="kicker">Part 2 &middot; What you walk away with</div>
+    <h2>What your evaluation will put <span class="gold">in your hand.</span></h2>
+    <div class="grid g4">
+      <div class="card"><div class="lbl">Your floor</div><div class="big">$ ___</div><div class="note">The lowest defensible value &mdash; below this, you walk.</div></div>
+      <div class="card"><div class="lbl">Your premium range</div><div class="big">+__%</div><div class="note">What a fair deal should add on top, with evidence.</div></div>
+      <div class="card"><div class="lbl">Your walk-away</div><div class="big">No / Yes</div><div class="note">A clear line, so rejection becomes a strategy, not a gamble.</div></div>
+      <div class="card"><div class="lbl">Your levers</div><div class="big">Aquifer</div><div class="note">Territory, capacity, ownership structure &mdash; what to trade and what to keep.</div></div>
+    </div>
+    <p class="lede" style="margin-top:1.7rem">Then you sit across from Banadir not hoping for a fair deal &mdash; but <strong>knowing</strong> what one looks like.</p>
+    <div class="footer" style="position:static;margin-top:2rem"><span>Mogadishu Water Supply Company</span><span class="gold">Know your number. Then negotiate.</span></div>
+  </section>
+
+</div>
+
+<div class="bar" id="progressbar"></div>
+<div class="count" id="count"></div>
+<div class="nav">
+  <button onclick="go(-1)" aria-label="Previous">&#8249;</button>
+  <button onclick="go(1)" aria-label="Next">&#8250;</button>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  const bar=document.getElementById('progressbar');
+  const count=document.getElementById('count');
+  const pill=document.getElementById('partpill');
+  function render(){
+    slides.forEach((s,n)=>s.classList.toggle('active',n===i));
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    count.textContent=String(i+1).padStart(2,'0')+' / '+String(slides.length).padStart(2,'0');
+    pill.textContent = i<10 ? 'Part 1 — The global proof' : 'Part 2 — Your hidden value';
+    if(i===0) pill.textContent='';
+  }
+  function go(d){i=Math.min(slides.length-1,Math.max(0,i+d));render()}
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){go(1);e.preventDefault()}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){go(-1);e.preventDefault()}
+    if(e.key==='Home'){i=0;render()}
+    if(e.key==='End'){i=slides.length-1;render()}
+  });
+  // touch swipe
+  let x0=null;
+  document.addEventListener('touchstart',e=>x0=e.touches[0].clientX,{passive:true});
+  document.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50)go(dx<0?1:-1);x0=null},{passive:true});
+  render();
+</script>
+</body>
+</html>
